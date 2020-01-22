@@ -1,0 +1,18 @@
+## Interface: 11303
+## Title: WSGPremade
+
+## Notes: Tool for forming WSG premade groups
+
+## Author: maurtybrave
+## OptionalDeps: Ace3
+## Version: 0
+
+## X-Category: Battlegrounds/PvP
+## SavedVariables: WSGPremadeDB
+
+## X-Curse-Project-ID: 
+
+Libs\embeds.xml
+
+WSGPremade.lua
+GUI.lua
