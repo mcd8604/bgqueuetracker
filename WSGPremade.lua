@@ -1,7 +1,7 @@
 WSGPremade = LibStub("AceAddon-3.0"):NewAddon("WSGPremade", "AceConsole-3.0", "AceHook-3.0", "AceEvent-3.0", "AceComm-3.0", "AceSerializer-3.0")
 
 local addonName = GetAddOnMetadata("WSGPremade", "Title");
-local commPrefix = addonName .. "4";
+local commPrefix = addonName .. "1";
 
 local playerName = UnitName("player");
 
@@ -20,6 +20,52 @@ function WSGPremade:OnInitialize()
 	DrawMinimapIcon();
 	WSGPremadeGUI:PrepareGUI()
 end
+
+function WSGPremade:OnEnable()
+	self:RegisterEvent("UPDATE_BATTLEFIELD_STATUS")
+end
+
+function WSGPremade:Reload()
+	self:UPDATE_BATTLEFIELD_STATUS()
+end
+
+local BG_ID_AV = 1
+local BG_ID_WSG = 2
+function WSGPremade:UPDATE_BATTLEFIELD_STATUS()
+	CheckBGStatus(BG_ID_AV)
+	CheckBGStatus(BG_ID_WSG)
+end
+
+
+function CheckBGStatus(bgid)
+	local status, map, instanceID, isRegistered, suspendedQueue, queueType, gameType, role = GetBattlefieldStatus(bgid)
+	bgData = {
+		status = status,
+		map = map,
+		instanceID = instanceID,
+		isRegistered = isRegistered, 
+		suspendedQueue = suspendedQueue, 
+		queueType = queueType, 
+		gameType = gameType, 
+		role = role,
+		confirmTime = GetBattlefieldPortExpiration(bgid),
+		waitTime = GetBattlefieldTimeWaited(bgid),
+		estTime = GetBattlefieldEstimatedWaitTime(bgid)
+	}
+	WSGPremadeGUI:SetLabel(bgid, bgData)
+end
+
+function WSGPremade:broadcast(msg)
+	--ListChannelByName(GetChannelName('wsgpremade'))
+	for i = 1, MAX_RAID_MEMBERS do
+		name, rank, subgroup, level, class, fileName, 
+			zone, online, isDead, role, isML, combatRole = GetRaidRosterInfo(raidIndex);
+		if name and online then
+			print(format('send comm to %s: %s', name, msg))
+		end
+	end
+end
+
 
 -- CHAT COMMANDS
 local options = {
