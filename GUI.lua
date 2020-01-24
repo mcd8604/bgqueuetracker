@@ -6,8 +6,8 @@ local AceGUI = LibStub("AceGUI-3.0")
 LibStub("AceHook-3.0"):Embed(GUI)
 
 local mainFrame = nil
-local bgLabels = {}
-local WSGPremadeGUI_UpdateInterval = 1.0;
+local playerTable = {}
+--local WSGPremadeGUI_UpdateInterval = 1.0;
 
 function GUI:Show(skipUpdate, sort_column)
 	mainFrame:Show()
@@ -40,53 +40,73 @@ function GUI:PrepareGUI()
 	mainFrame:SetWidth(600)
 	mainFrame:SetLayout("List")
 	mainFrame:EnableResize(false)
-	mainFrame.TimeSinceLastUpdate = 0
-	mainFrame:SetCallback("OnUpdate", function(self, elapsed)
-		print('OnUpdate')
-		self.TimeSinceLastUpdate = self.TimeSinceLastUpdate + elapsed; 	  
-		while (self.TimeSinceLastUpdate > WSGPremadeGUI_UpdateInterval) do
-			local time = GetTime()
-			for bgid, label in ipairs(bgLabels) do
-				updateLabel(time, bgid, label)
-			end
-		  self.TimeSinceLastUpdate = self.TimeSinceLastUpdate - WSGPremadeGUI_UpdateInterval;
-		end
-	end)
+	--mainFrame.TimeSinceLastUpdate = 0
+	--mainFrame:SetCallback("OnUpdate", function(self, elapsed)
+	--	print('OnUpdate')
+	--	self.TimeSinceLastUpdate = self.TimeSinceLastUpdate + elapsed; 	  
+	--	while (self.TimeSinceLastUpdate > WSGPremadeGUI_UpdateInterval) do
+	--		local time = GetTime()
+	--		for bgid, label in ipairs(bgLabels) do
+	--			updateLabel(time, bgid, label)
+	--		end
+	--	  self.TimeSinceLastUpdate = self.TimeSinceLastUpdate - WSGPremadeGUI_UpdateInterval;
+	--	end
+	--end)
 	--mainFrame:SetCallback("OnClose", function(widget) AceGUI:Release(widget) end)
-
-	local bgLabelGrp = AceGUI:Create("SimpleGroup")
-	bgLabelGrp:SetFullWidth(true)
-	bgLabelGrp:SetLayout("Flow")
-	mainFrame:AddChild(bgLabelGrp)
-	GUI:CreateBGLabel(1, bgLabelGrp)
-	GUI:CreateBGLabel(2, bgLabelGrp)
 
 	local button = AceGUI:Create("Button")
 	button:SetText("Update")
 	button:SetWidth(200)
 	button:SetCallback("OnClick", function(self, elapsed)
-		local time = GetTime()
-		for bgid, label in ipairs(bgLabels) do
-			updateLabel(time, bgid, label)
+		for name, player in ipairs(playerTable) do
+			updatePlayerDisplay(player)
 		end
 	end)
 	mainFrame:AddChild(button)
 end
 
-function GUI:CreateBGLabel(bgid, group)
-	bgLabel = AceGUI:Create("Label")
-	bgLabel:SetRelativeWidth(0.8)
-	bgLabel:SetText('test')
-	bgLabel.lastUpdate = GetTime()
-	bgLabel.seconds = 0
-	group:AddChild(bgLabel)
-	table.insert(bgLabels, bgid, bgLabel)
+function GUI:SetPlayerData(playerName, bgData)
+	local player = playerTable[playerName]
+	if player then
+		--table.insert(player.bgs, bgData.bgid, bgData)
+		player.bgs[bgData.bgid] = bgData
+		player.lastUpdate = GetTime()
+		player.elapsed = 0
+	else
+		g = GUI:CreatePlayerDisplayGroup(playerName)
+		mainFrame:AddChild(g)
+		player = {
+			bgs = {},
+			group = g,
+			lastUpdate = GetTime(),
+			elapsed = 0
+		}
+		player.bgs[bgData.bgid] = bgData
+		playerTable[playerName] = player
+	end
+	updatePlayerDisplay(player)
 end
 
-function GUI:SetLabel(bgid, bgData)
-	if(bgLabels[bgid] and bgData ) then
-		bgLabels[bgid].bgData = bgData
-	end
+function GUI:CreatePlayerDisplayGroup(playerName)
+	local group = AceGUI:Create("SimpleGroup")
+	group:SetFullWidth(true)
+	group:SetLayout("Flow")
+	playerLabel = AceGUI:Create("Label")
+	playerLabel:SetRelativeWidth(0.8)
+	playerLabel:SetText(playerName)
+	group:AddChild(playerLabel)
+	group.avLabel = GUI:CreateBGLabel(1)
+	group:AddChild(group.avLabel)
+	group.wsgLabel = GUI:CreateBGLabel(2)
+	group:AddChild(group.wsgLabel)
+	return group
+end
+
+function GUI:CreateBGLabel(bgid)
+	local bgLabel = AceGUI:Create("Label")
+	bgLabel:SetRelativeWidth(0.8)
+	bgLabel:SetText('test')
+	return bgLabel
 end
 
 function formatShortTime(milliseconds)
@@ -111,24 +131,33 @@ function formatShortTime(milliseconds)
 	end
 end
 
-function updateLabel(time, bgid, label)
-	label.seconds = label.seconds + (time - label.lastUpdate)	
-	label.lastUpdate = time	
-	text = ''
-	bgData = label.bgData
-	if(bgData.suspendedQueue) then
-		text = string.format('%s: Suspended!', bgData.map)
-	elseif( bgData.status == "active" and bgData.instanceID > 0 ) then
-		text = string.format('%s: In BG', bgData.map)
-	elseif( bgData.status == "confirm" ) then
-		text = string.format("%s: %s", bgData.map, formatShortTime(bgData.confirmTime))
-	elseif( bgData.status == "queued" ) then
-		text = string.format("%s: %s (%s)", bgData.map, formatShortTime(bgData.waitTime + label.seconds or 0), formatShortTime(bgData.estTime or 0))
+function updatePlayerDisplay(player)
+	if player then
+		local time = GetTime()
+		player.elapsed = player.elapsed + (time - player.lastUpdate)	
+		player.lastUpdate = time
+		updatePlayerBGLabel(player.elapsed, player.bgs[1], player.group.avLabel)
+		updatePlayerBGLabel(player.elapsed, player.bgs[2], player.group.wsgLabel)
+		-- Do a quick recheck incase the text got bigger in the update without something being removed/added
+		--if( longestText < (self.text:GetStringWidth() + 10) ) then
+		--	longestText = self.text:GetStringWidth() + 20
+		--	mainFrame:SetWidth(longestText)
+		--end
 	end
-	label:SetText(text)	
-	-- Do a quick recheck incase the text got bigger in the update without something being removed/added
-	--if( longestText < (self.text:GetStringWidth() + 10) ) then
-	--	longestText = self.text:GetStringWidth() + 20
-	--	mainFrame:SetWidth(longestText)
-	--end
+end
+
+function updatePlayerBGLabel(elapsed, bgData, label)	
+	text = ''
+	if(bgData) then
+		if(bgData.suspendedQueue) then
+			text = string.format('%s: Suspended!', bgData.map)
+		elseif( bgData.status == "active" and bgData.instanceID > 0 ) then
+			text = string.format('%s: In BG', bgData.map)
+		elseif( bgData.status == "confirm" ) then
+			text = string.format("%s: %s", bgData.map, formatShortTime(bgData.confirmTime))
+		elseif( bgData.status == "queued" ) then
+			text = string.format("%s: %s (%s)", bgData.map, formatShortTime(bgData.waitTime + elapsed or 0), formatShortTime(bgData.estTime or 0))
+		end
+		label:SetText(text)	
+	end
 end

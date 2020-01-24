@@ -32,14 +32,14 @@ end
 local BG_ID_AV = 1
 local BG_ID_WSG = 2
 function WSGPremade:UPDATE_BATTLEFIELD_STATUS()
-	CheckBGStatus(BG_ID_AV)
-	CheckBGStatus(BG_ID_WSG)
+	WSGPremade:CheckBGStatus(BG_ID_AV)
+	WSGPremade:CheckBGStatus(BG_ID_WSG)
 end
 
-
-function CheckBGStatus(bgid)
+function WSGPremade:CheckBGStatus(bgid)
 	local status, map, instanceID, isRegistered, suspendedQueue, queueType, gameType, role = GetBattlefieldStatus(bgid)
 	bgData = {
+		bgid = bgid,
 		status = status,
 		map = map,
 		instanceID = instanceID,
@@ -52,7 +52,8 @@ function CheckBGStatus(bgid)
 		waitTime = GetBattlefieldTimeWaited(bgid),
 		estTime = GetBattlefieldEstimatedWaitTime(bgid)
 	}
-	WSGPremadeGUI:SetLabel(bgid, bgData)
+	WSGPremadeGUI:SetPlayerData(playerName, bgData)
+	broadcast(self.Serialize(playerName, bgData))
 end
 
 function WSGPremade:broadcast(msg)
@@ -60,12 +61,25 @@ function WSGPremade:broadcast(msg)
 	for i = 1, MAX_RAID_MEMBERS do
 		name, rank, subgroup, level, class, fileName, 
 			zone, online, isDead, role, isML, combatRole = GetRaidRosterInfo(raidIndex);
-		if name and online then
-			print(format('send comm to %s: %s', name, msg))
+		if name and name ~= playerName and online then
+			--print(format('send comm to %s: %s', name, msg))
+			WSGPremade:SendCommMessage(commPrefix, msg, "WHISPER", name);
 		end
 	end
 end
 
+function WSGPremade:OnCommReceive(prefix, message, distribution, sender)
+	if (distribution == "WHISPER" and IsUnitInRaid(sender)) then
+		local ok, receiverName, bgData = self:Deserialize(message);
+		if (not ok) then
+			return;
+		end
+		if (sender == UnitName("player")) then
+			return;	-- Ignore broadcast messages from myself
+		end
+		WSGPremadeGUI:SetPlayerData(sender, bgData)
+	end
+end
 
 -- CHAT COMMANDS
 local options = {
@@ -81,11 +95,6 @@ local options = {
 	}
 }
 LibStub("AceConfig-3.0"):RegisterOptionsTable("WSGPremade", options, {"WSGPremade", "wsg"})
-
-function WSGPremade:OnCommReceive(prefix, message, distribution, sender)
-	--if (distribution == "WHISPER") then
-	--end
-end
 
 function WSGPremade:PLAYER_DEAD()
 end
