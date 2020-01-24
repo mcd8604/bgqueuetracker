@@ -69,7 +69,7 @@ function WSGPremade:broadcast(msg)
 end
 
 function WSGPremade:OnCommReceive(prefix, message, distribution, sender)
-	if (distribution == "WHISPER" and IsUnitInRaid(sender)) then
+	if (distribution == "WHISPER" and UnitInRaid(sender)) then
 		local ok, receiverName, bgData = self:Deserialize(message);
 		if (not ok) then
 			return;
