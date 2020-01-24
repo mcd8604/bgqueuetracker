@@ -53,14 +53,13 @@ function WSGPremade:CheckBGStatus(bgid)
 		estTime = GetBattlefieldEstimatedWaitTime(bgid)
 	}
 	WSGPremadeGUI:SetPlayerData(playerName, bgData)
-	broadcast(self.Serialize(playerName, bgData))
+	WSGPremade:broadcast(self.Serialize(playerName, bgData))
 end
 
 function WSGPremade:broadcast(msg)
 	--ListChannelByName(GetChannelName('wsgpremade'))
-	for i = 1, MAX_RAID_MEMBERS do
-		name, rank, subgroup, level, class, fileName, 
-			zone, online, isDead, role, isML, combatRole = GetRaidRosterInfo(raidIndex);
+	for i = 1, GetNumGroupMembers() do
+		name, rank, subgroup, level, class, fileName, zone, online, isDead, role, isML, combatRole = GetRaidRosterInfo(i);
 		if name and name ~= playerName and online then
 			--print(format('send comm to %s: %s', name, msg))
 			WSGPremade:SendCommMessage(commPrefix, msg, "WHISPER", name);
