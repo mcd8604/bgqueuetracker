@@ -81,7 +81,7 @@ function WSGPremade:broadcastToGroup(msg)
 		if name then
 			_, realm = UnitName(name)
 			-- realm is nil if they're from the same realm
-			if narealm == nil and name ~= playerName and online then
+			if realm == nil and name ~= playerName and online then
 				WSGPremade:SendCommMessage(commPrefix, msg, "WHISPER", name);
 			end
 		end
