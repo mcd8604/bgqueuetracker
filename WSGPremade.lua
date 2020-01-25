@@ -16,13 +16,14 @@ function WSGPremade:OnInitialize()
 	--ChatFrame_AddMessageEventFilter("CHAT_MSG_COMBAT_HONOR_GAIN", CHAT_MSG_COMBAT_HONOR_GAIN_FILTER);
 	self:RegisterComm(commPrefix, "OnCommReceive")
 	self:RegisterEvent("PLAYER_DEAD");
-
+	
 	DrawMinimapIcon();
 	WSGPremadeGUI:PrepareGUI()
 end
 
 function WSGPremade:OnEnable()
 	self:RegisterEvent("UPDATE_BATTLEFIELD_STATUS")
+	self:RegisterEvent("FRIENDLIST_UPDATE");
 end
 
 function WSGPremade:Reload()
@@ -34,6 +35,10 @@ local BG_ID_WSG = 2
 function WSGPremade:UPDATE_BATTLEFIELD_STATUS()
 	WSGPremade:CheckBGStatus(BG_ID_AV)
 	WSGPremade:CheckBGStatus(BG_ID_WSG)
+end
+
+function WSGPremade:FRIENDLIST_UPDATE()
+	-- TODO get data to broadcast
 end
 
 function WSGPremade:CheckBGStatus(bgid)
@@ -53,15 +58,29 @@ function WSGPremade:CheckBGStatus(bgid)
 		estTime = GetBattlefieldEstimatedWaitTime(bgid)
 	}
 	WSGPremadeGUI:SetPlayerData(playerName, bgData)
-	WSGPremade:broadcast(self.Serialize(playerName, bgData))
+	WSGPremade:broadcastToGroup(WSGPremade:Serialize(bgData))
 end
 
-function WSGPremade:broadcast(msg)
+function WSGPremade:broadcastToChannel(channel, msg):
 	--ListChannelByName(GetChannelName('wsgpremade'))
+	return
+end
+
+function WSGPremade:broadcastToFriends(msg)
+	--for i = 1, 1024 do
+	--	connected, name, className, area, notes, guid, level, dnd, afk, rafLinkType, mobile = C_FriendList.GetFriendInfoByIndex(i)
+	--	if(connected and name) then
+	--		WSGPremade:Print(name)
+	--	end
+	--end
+end
+
+function WSGPremade:broadcastToGroup(msg)
 	for i = 1, GetNumGroupMembers() do
 		name, rank, subgroup, level, class, fileName, zone, online, isDead, role, isML, combatRole = GetRaidRosterInfo(i);
-		if name and name ~= playerName and online then
-			--print(format('send comm to %s: %s', name, msg))
+		_, realm = UnitName(name)
+		-- realm is nil if they're from the same realm
+		if name and realm == nil and name ~= playerName and online then
 			WSGPremade:SendCommMessage(commPrefix, msg, "WHISPER", name);
 		end
 	end
@@ -69,9 +88,14 @@ end
 
 function WSGPremade:OnCommReceive(prefix, message, distribution, sender)
 	if (distribution == "WHISPER" and (UnitInRaid(sender) or UnitInParty(sender))) then
-		local ok, receiverName, bgData = self:Deserialize(message);
+		local ok, bgData = WSGPremade:Deserialize(message);
 		if (not ok) then
+			WSGPremade.Print(string.format('Could not deserialize data')
 			return;
+		end
+		if(bgData == nil) then
+			WSGPremade.Print('bgData is nil')
+			return
 		end
 		if (sender == UnitName("player")) then
 			return;	-- Ignore broadcast messages from myself
