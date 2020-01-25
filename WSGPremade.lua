@@ -78,10 +78,12 @@ end
 function WSGPremade:broadcastToGroup(msg)
 	for i = 1, GetNumGroupMembers() do
 		name, rank, subgroup, level, class, fileName, zone, online, isDead, role, isML, combatRole = GetRaidRosterInfo(i);
-		_, realm = UnitName(name)
-		-- realm is nil if they're from the same realm
-		if name and realm == nil and name ~= playerName and online then
-			WSGPremade:SendCommMessage(commPrefix, msg, "WHISPER", name);
+		if name then
+			_, realm = UnitName(name)
+			-- realm is nil if they're from the same realm
+			if narealm == nil and name ~= playerName and online then
+				WSGPremade:SendCommMessage(commPrefix, msg, "WHISPER", name);
+			end
 		end
 	end
 end
