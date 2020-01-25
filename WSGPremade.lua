@@ -90,7 +90,7 @@ function WSGPremade:OnCommReceive(prefix, message, distribution, sender)
 	if (distribution == "WHISPER" and (UnitInRaid(sender) or UnitInParty(sender))) then
 		local ok, bgData = WSGPremade:Deserialize(message);
 		if (not ok) then
-			WSGPremade.Print(string.format('Could not deserialize data')
+			WSGPremade.Print(string.format('Could not deserialize data'))
 			return;
 		end
 		if(bgData == nil) then
