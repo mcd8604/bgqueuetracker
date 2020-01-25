@@ -54,15 +54,15 @@ function GUI:PrepareGUI()
 	--end)
 	--mainFrame:SetCallback("OnClose", function(widget) AceGUI:Release(widget) end)
 
-	local button = AceGUI:Create("Button")
-	button:SetText("Update")
-	button:SetWidth(200)
-	button:SetCallback("OnClick", function(self, elapsed)
-		for name, player in ipairs(playerTable) do
-			updatePlayerDisplay(player)
-		end
-	end)
-	mainFrame:AddChild(button)
+	--local button = AceGUI:Create("Button")
+	--button:SetText("Update")
+	--button:SetWidth(200)
+	--button:SetCallback("OnClick", function(self, elapsed)
+	--	for name, player in ipairs(playerTable) do
+	--		updatePlayerDisplay(player)
+	--	end
+	--end)
+	--mainFrame:AddChild(button)
 end
 
 function GUI:SetPlayerData(playerName, bgData)
