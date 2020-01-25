@@ -61,7 +61,7 @@ function WSGPremade:CheckBGStatus(bgid)
 	WSGPremade:broadcastToGroup(WSGPremade:Serialize(bgData))
 end
 
-function WSGPremade:broadcastToChannel(channel, msg):
+function WSGPremade:broadcastToChannel(channel, msg)
 	--ListChannelByName(GetChannelName('wsgpremade'))
 	return
 end
