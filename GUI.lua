@@ -39,7 +39,7 @@ function GUI:PrepareGUI()
 	tinsert(UISpecialFrames, "WSGPremadeGUI_MainFrame")	-- allow ESC close
 	mainFrame:SetTitle("WSG Premade")
 	mainFrame:SetWidth(240)
-	mainFrame:SetLayout("List")
+	mainFrame:SetLayout("Flow")
 	mainFrame:EnableResize(true)
 	--mainFrame.TimeSinceLastUpdate = 0
 	--mainFrame:SetCallback("OnUpdate", function(self, elapsed)
@@ -55,16 +55,15 @@ function GUI:PrepareGUI()
 	--end)
 	--mainFrame:SetCallback("OnClose", function(widget) AceGUI:Release(widget) end)
 
-	--local button = AceGUI:Create("Button")
-	--button:SetText("Update")
-	--button:SetWidth(200)
-	--button:SetCallback("OnClick", function(self, elapsed)
-	--	for name, player in ipairs(playerTable) do
-	--		updatePlayerDisplay(player)
-	--	end
-	--end)
-	--mainFrame:AddChild(button)
-		
+	local button = AceGUI:Create("Button")
+	button:SetText("Clear")
+	button:SetFullWidth(true)
+	button:SetCallback("OnClick", function(self, elapsed)
+		playerTable = {}
+		scroll:ReleaseChildren()
+	end)
+	mainFrame:AddChild(button)
+	
 	scrollcontainer = AceGUI:Create("SimpleGroup")
 	scrollcontainer:SetFullWidth(true)
 	scrollcontainer:SetFullHeight(true)
@@ -121,7 +120,7 @@ end
 function GUI:CreateBGLabel(bgid)
 	local bgLabel = AceGUI:Create("Label")
 	bgLabel:SetRelativeWidth(0.8)
-	bgLabel:SetText('test')
+	bgLabel:SetText('<empty>')
 	return bgLabel
 end
 
@@ -174,6 +173,6 @@ function updatePlayerBGLabel(elapsed, bgData, label)
 		elseif( bgData.status == "queued" ) then
 			text = string.format("%s: %s (%s)", bgData.map, formatShortTime(bgData.waitTime + elapsed or 0), formatShortTime(bgData.estTime or 0))
 		end
-		label:SetText(text)	
+		label:SetText("- "..text)	
 	end
 end
