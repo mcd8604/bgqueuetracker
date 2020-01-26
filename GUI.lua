@@ -6,6 +6,7 @@ local AceGUI = LibStub("AceGUI-3.0")
 LibStub("AceHook-3.0"):Embed(GUI)
 
 local mainFrame = nil
+local scroll = nil
 local playerTable = {}
 --local WSGPremadeGUI_UpdateInterval = 1.0;
 
@@ -37,9 +38,9 @@ function GUI:PrepareGUI()
 	_G["WSGPremadeGUI_MainFrame"] = mainFrame
 	tinsert(UISpecialFrames, "WSGPremadeGUI_MainFrame")	-- allow ESC close
 	mainFrame:SetTitle("WSG Premade")
-	mainFrame:SetWidth(600)
+	mainFrame:SetWidth(240)
 	mainFrame:SetLayout("List")
-	mainFrame:EnableResize(false)
+	mainFrame:EnableResize(true)
 	--mainFrame.TimeSinceLastUpdate = 0
 	--mainFrame:SetCallback("OnUpdate", function(self, elapsed)
 	--	print('OnUpdate')
@@ -63,6 +64,21 @@ function GUI:PrepareGUI()
 	--	end
 	--end)
 	--mainFrame:AddChild(button)
+		
+	scrollcontainer = AceGUI:Create("SimpleGroup")
+	scrollcontainer:SetFullWidth(true)
+	scrollcontainer:SetFullHeight(true)
+	scrollcontainer:SetLayout("Fill")
+
+	mainFrame:AddChild(scrollcontainer)
+
+	scroll = AceGUI:Create("ScrollFrame")
+	scroll:SetLayout("Flow")
+	scrollcontainer:AddChild(scroll)
+end
+
+function GUI:SetGroupData(playerName, groupData)
+
 end
 
 function GUI:SetPlayerData(playerName, bgData)
@@ -74,7 +90,7 @@ function GUI:SetPlayerData(playerName, bgData)
 		player.elapsed = 0
 	else
 		g = GUI:CreatePlayerDisplayGroup(playerName)
-		mainFrame:AddChild(g)
+		scroll:AddChild(g)
 		player = {
 			bgs = {},
 			group = g,
