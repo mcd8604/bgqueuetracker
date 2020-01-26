@@ -97,7 +97,7 @@ function WSGPremade:broadcastToFriends(msg)
 		-- connected, name, className, area, notes, guid, level, dnd, afk, rafLinkType, mobile
 		local friendInfo = C_FriendList.GetFriendInfoByIndex(i)
 		if(friendInfo and friendInfo.name and friendInfo.connected) then
-			WSGPremade:SendCommMessage(commPrefix, msg, "WHISPER", name);
+			WSGPremade:SendCommMessage(commPrefix, msg, "WHISPER", friendInfo.name);
 		end
 	end
 end
