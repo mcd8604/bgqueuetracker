@@ -4,6 +4,7 @@ local addonName = GetAddOnMetadata("WSGPremade", "Title");
 local commPrefix = addonName .. "1";
 
 local playerName = UnitName("player");
+local groups = {}
 
 function WSGPremade:OnInitialize()
 	self.db = LibStub("AceDB-3.0"):New("WSGPremadeDB", {
@@ -23,7 +24,7 @@ end
 
 function WSGPremade:OnEnable()
 	self:RegisterEvent("UPDATE_BATTLEFIELD_STATUS")
-	self:RegisterEvent("FRIENDLIST_UPDATE");
+	--self:RegisterEvent("FRIENDLIST_UPDATE");
 end
 
 function WSGPremade:Reload()
@@ -37,11 +38,10 @@ function WSGPremade:UPDATE_BATTLEFIELD_STATUS()
 	WSGPremade:CheckBGStatus(BG_ID_WSG)
 end
 
-function WSGPremade:FRIENDLIST_UPDATE()
-	-- TODO get data to broadcast
-end
+--function WSGPremade:FRIENDLIST_UPDATE()
+--end
 
-function WSGPremade:CheckBGStatus(bgid)
+function WSGPremade:GetBGStatus(bgid)
 	local status, map, instanceID, isRegistered, suspendedQueue, queueType, gameType, role = GetBattlefieldStatus(bgid)
 	bgData = {
 		bgid = bgid,
@@ -55,10 +55,36 @@ function WSGPremade:CheckBGStatus(bgid)
 		role = role,
 		confirmTime = GetBattlefieldPortExpiration(bgid),
 		waitTime = GetBattlefieldTimeWaited(bgid),
-		estTime = GetBattlefieldEstimatedWaitTime(bgid)
+		estTime = GetBattlefieldEstimatedWaitTime(bgid),
+		groupData = WSGPremade:GetGroupData()
 	}
+	return bgData
+end
+
+function WSGPremade:GetGroupData()
+	groupData = {}
+	for i = 1, GetNumGroupMembers() do
+		name, rank, subgroup, level, class, fileName, zone, online, isDead, role, isML, combatRole = GetRaidRosterInfo(i);
+		if name then
+			_, realm = UnitName(name)
+			-- realm is nil if they're from the same realm
+			if realm == nil then
+				groupData[name] = {
+					class = class,
+					isLead = rank == 2,
+					zone = zone
+				}
+			end
+		end
+	end
+	return groupData
+end
+
+function WSGPremade:CheckBGStatus(bgid)
+	bgData = WSGPremade:GetBGStatus(bgid)
 	WSGPremadeGUI:SetPlayerData(playerName, bgData)
-	WSGPremade:broadcastToGroup(WSGPremade:Serialize(bgData))
+	--WSGPremade:broadcastToGroup(WSGPremade:Serialize(bgData))
+	WSGPremade:broadcastToFriends(WSGPremade:Serialize(bgData))
 end
 
 function WSGPremade:broadcastToChannel(channel, msg)
@@ -67,12 +93,12 @@ function WSGPremade:broadcastToChannel(channel, msg)
 end
 
 function WSGPremade:broadcastToFriends(msg)
-	--for i = 1, 1024 do
-	--	connected, name, className, area, notes, guid, level, dnd, afk, rafLinkType, mobile = C_FriendList.GetFriendInfoByIndex(i)
-	--	if(connected and name) then
-	--		WSGPremade:Print(name)
-	--	end
-	--end
+	for i = 1, 1024 do
+		connected, name, className, area, notes, guid, level, dnd, afk, rafLinkType, mobile = C_FriendList.GetFriendInfoByIndex(i)
+		if(connected and name) then
+			WSGPremade:SendCommMessage(commPrefix, msg, "WHISPER", name);
+		end
+	end
 end
 
 function WSGPremade:broadcastToGroup(msg)
