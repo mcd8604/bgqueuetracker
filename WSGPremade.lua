@@ -43,7 +43,7 @@ end
 
 function WSGPremade:GetBGStatus(bgid)
 	local status, map, instanceID, isRegistered, suspendedQueue, queueType, gameType, role = GetBattlefieldStatus(bgid)
-	bgData = {
+	local bgData = {
 		bgid = bgid,
 		status = status,
 		map = map,
@@ -116,20 +116,24 @@ function WSGPremade:broadcastToGroup(msg)
 end
 
 function WSGPremade:OnCommReceive(prefix, message, distribution, sender)
-	if (distribution == "WHISPER" and (UnitInRaid(sender) or UnitInParty(sender))) then
-		local ok, bgData = WSGPremade:Deserialize(message);
-		if (not ok) then
-			WSGPremade.Print(string.format('Could not deserialize data'))
-			return;
+	if (distribution == "WHISPER") then
+		local friendInfo = C_FriendList.GetFriendInfo(sender)
+		if(friendInfo and friendInfo.name and friendInfo.connected) then
+			--and (UnitInRaid(sender) or UnitInParty(sender))
+			local ok, bgData = WSGPremade:Deserialize(message);
+			if (not ok) then
+				WSGPremade.Print(string.format('Could not deserialize data'))
+				return;
+			end
+			if(bgData == nil) then
+				WSGPremade.Print('bgData is nil')
+				return
+			end
+			if (sender == UnitName("player")) then
+				return;	-- Ignore broadcast messages from myself
+			end
+			WSGPremadeGUI:SetPlayerData(sender, bgData)
 		end
-		if(bgData == nil) then
-			WSGPremade.Print('bgData is nil')
-			return
-		end
-		if (sender == UnitName("player")) then
-			return;	-- Ignore broadcast messages from myself
-		end
-		WSGPremadeGUI:SetPlayerData(sender, bgData)
 	end
 end
 
