@@ -94,8 +94,9 @@ end
 
 function WSGPremade:broadcastToFriends(msg)
 	for i = 1, 1024 do
-		connected, name, className, area, notes, guid, level, dnd, afk, rafLinkType, mobile = C_FriendList.GetFriendInfoByIndex(i)
-		if(connected and name) then
+		-- connected, name, className, area, notes, guid, level, dnd, afk, rafLinkType, mobile
+		local friendInfo = C_FriendList.GetFriendInfoByIndex(i)
+		if(friendInfo and friendInfo.name and friendInfo.connected) then
 			WSGPremade:SendCommMessage(commPrefix, msg, "WHISPER", name);
 		end
 	end
