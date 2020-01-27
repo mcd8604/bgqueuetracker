@@ -6,6 +6,7 @@ local commPrefix = addonName .. "1";
 local playerName = UnitName("player");
 local groups = {}
 local nextBroadcastData = nil
+local friendsListUpdateCount = 0
 
 function WSGPremade:OnInitialize()
 	self.db = LibStub("AceDB-3.0"):New("WSGPremadeDB", {
@@ -41,9 +42,14 @@ end
 
 function WSGPremade:FRIENDLIST_UPDATE()
 	if(nextBroadcastData ~= nil) then
-		local serializedData = WSGPremade:Serialize(nextBroadcastData)
-		nextBroadcastData = nil
-		--WSGPremade:broadcastToFriends(serializedData)
+		if(friendsListUpdateCount >= 2) then
+			local serializedData = WSGPremade:Serialize(nextBroadcastData)
+			nextBroadcastData = nil
+			WSGPremade:broadcastToFriends(serializedData)
+			friendsListUpdateCount = 0
+		else 
+			friendsListUpdateCount = friendsListUpdateCount + 1
+		end
 	end
 end
 
