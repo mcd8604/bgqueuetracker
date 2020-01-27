@@ -5,8 +5,6 @@ local commPrefix = addonName .. "1";
 
 local playerName = UnitName("player");
 local groups = {}
-local nextBroadcastData = nil
-local friendsListUpdateCount = 0
 
 function WSGPremade:OnInitialize()
 	self.db = LibStub("AceDB-3.0"):New("WSGPremadeDB", {
@@ -16,7 +14,6 @@ function WSGPremade:OnInitialize()
 	}, true)
 
 	--self:RegisterEvent("CHAT_MSG_COMBAT_HONOR_GAIN", CHAT_MSG_COMBAT_HONOR_GAIN_EVENT);
-	--ChatFrame_AddMessageEventFilter("CHAT_MSG_COMBAT_HONOR_GAIN", CHAT_MSG_COMBAT_HONOR_GAIN_FILTER);
 	self:RegisterComm(commPrefix, "OnCommReceive")
 	self:RegisterEvent("PLAYER_DEAD");
 	
@@ -26,7 +23,10 @@ end
 
 function WSGPremade:OnEnable()
 	self:RegisterEvent("UPDATE_BATTLEFIELD_STATUS")
-	self:RegisterEvent("FRIENDLIST_UPDATE");
+	--self:RegisterEvent("FRIENDLIST_UPDATE");
+	ChatFrame_AddMessageEventFilter("CHAT_MSG_SYSTEM", function(frame, event, message, ...)
+		return message:match("No player named") ~= nil
+	end)
 end
 
 function WSGPremade:Reload()
@@ -40,18 +40,13 @@ function WSGPremade:UPDATE_BATTLEFIELD_STATUS()
 	WSGPremade:CheckBGStatus(BG_ID_WSG)
 end
 
-function WSGPremade:FRIENDLIST_UPDATE()
-	if(nextBroadcastData ~= nil) then
-		if(friendsListUpdateCount >= 2) then
-			local serializedData = WSGPremade:Serialize(nextBroadcastData)
-			nextBroadcastData = nil
-			WSGPremade:broadcastToFriends(serializedData)
-			friendsListUpdateCount = 0
-		else 
-			friendsListUpdateCount = friendsListUpdateCount + 1
-		end
-	end
-end
+--function WSGPremade:FRIENDLIST_UPDATE()
+--	if(nextBroadcastData ~= nil) then
+--		local serializedData = WSGPremade:Serialize(nextBroadcastData)
+--		nextBroadcastData = nil
+--		WSGPremade:broadcastToFriends(serializedData)
+--	end
+--end
 
 function WSGPremade:GetBGStatus(bgid)
 	local status, map, instanceID, isRegistered, suspendedQueue, queueType, gameType, role = GetBattlefieldStatus(bgid)
@@ -95,9 +90,11 @@ end
 function WSGPremade:CheckBGStatus(bgid)
 	local bgData = WSGPremade:GetBGStatus(bgid)
 	WSGPremadeGUI:SetPlayerData(playerName, bgData)
-	WSGPremade:broadcastToGroup(WSGPremade:Serialize(bgData))
-	nextBroadcastData = bgData
-	C_FriendList.ShowFriends()
+	local serializedData = WSGPremade:Serialize(bgData)
+	WSGPremade:broadcastToGroup(serializedData)
+	WSGPremade:broadcastToFriends(serializedData)
+	--nextBroadcastData = bgData
+	--C_FriendList.ShowFriends()
 end
 
 function WSGPremade:broadcastToChannel(channel, msg)
