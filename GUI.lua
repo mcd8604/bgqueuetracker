@@ -47,8 +47,10 @@ function GUI:PrepareGUI()
 	--	self.TimeSinceLastUpdate = self.TimeSinceLastUpdate + elapsed; 	  
 	--	while (self.TimeSinceLastUpdate > WSGPremadeGUI_UpdateInterval) do
 	--		local time = GetTime()
-	--		for bgid, label in pairs(bgLabels) do
-	--			updateLabel(time, bgid, label)
+	--		for name, player in pairs(playerTable) do
+	--			for bgid, label in pairs(player.bgLabels) do
+	--				updateLabel(time, bgid, label)
+	--			end
 	--		end
 	--	  self.TimeSinceLastUpdate = self.TimeSinceLastUpdate - WSGPremadeGUI_UpdateInterval;
 	--	end
