@@ -5,6 +5,7 @@ local commPrefix = addonName .. "1";
 
 local playerName = UnitName("player");
 local groups = {}
+local nextBroadcastData = nil
 
 function WSGPremade:OnInitialize()
 	self.db = LibStub("AceDB-3.0"):New("WSGPremadeDB", {
@@ -24,7 +25,7 @@ end
 
 function WSGPremade:OnEnable()
 	self:RegisterEvent("UPDATE_BATTLEFIELD_STATUS")
-	--self:RegisterEvent("FRIENDLIST_UPDATE");
+	self:RegisterEvent("FRIENDLIST_UPDATE");
 end
 
 function WSGPremade:Reload()
@@ -38,8 +39,13 @@ function WSGPremade:UPDATE_BATTLEFIELD_STATUS()
 	WSGPremade:CheckBGStatus(BG_ID_WSG)
 end
 
---function WSGPremade:FRIENDLIST_UPDATE()
---end
+function WSGPremade:FRIENDLIST_UPDATE()
+	if(nextBroadcastData ~= nil) then
+		local serializedData = WSGPremade:Serialize(nextBroadcastData)
+		nextBroadcastData = nil
+		--WSGPremade:broadcastToFriends(serializedData)
+	end
+end
 
 function WSGPremade:GetBGStatus(bgid)
 	local status, map, instanceID, isRegistered, suspendedQueue, queueType, gameType, role = GetBattlefieldStatus(bgid)
@@ -81,10 +87,11 @@ function WSGPremade:GetGroupData()
 end
 
 function WSGPremade:CheckBGStatus(bgid)
-	bgData = WSGPremade:GetBGStatus(bgid)
+	local bgData = WSGPremade:GetBGStatus(bgid)
 	WSGPremadeGUI:SetPlayerData(playerName, bgData)
-	--WSGPremade:broadcastToGroup(WSGPremade:Serialize(bgData))
-	WSGPremade:broadcastToFriends(WSGPremade:Serialize(bgData))
+	WSGPremade:broadcastToGroup(WSGPremade:Serialize(bgData))
+	nextBroadcastData = bgData
+	C_FriendList.ShowFriends()
 end
 
 function WSGPremade:broadcastToChannel(channel, msg)
@@ -103,37 +110,46 @@ function WSGPremade:broadcastToFriends(msg)
 end
 
 function WSGPremade:broadcastToGroup(msg)
-	for i = 1, GetNumGroupMembers() do
-		name, rank, subgroup, level, class, fileName, zone, online, isDead, role, isML, combatRole = GetRaidRosterInfo(i);
-		if name then
-			_, realm = UnitName(name)
-			-- realm is nil if they're from the same realm
-			if realm == nil and name ~= playerName and online then
-				WSGPremade:SendCommMessage(commPrefix, msg, "WHISPER", name);
-			end
-		end
+	if (IsInRaid()) then
+		WSGPremade:SendCommMessage(commPrefix, msg, "RAID");
+	elseif (IsInGroup(LE_PARTY_CATEGORY_HOME)) then
+		WSGPremade:SendCommMessage(commPrefix, msg, "PARTY");
 	end
+	--for i = 1, GetNumGroupMembers() do
+	--	name, rank, subgroup, level, class, fileName, zone, online, isDead, role, isML, combatRole = GetRaidRosterInfo(i);
+	--	if name then
+	--		if UnitIsSameServer(name) and name ~= playerName and online then
+	--			WSGPremade:SendCommMessage(commPrefix, msg, "WHISPER", name);
+	--		end
+	--	end
+	--end
 end
 
 function WSGPremade:OnCommReceive(prefix, message, distribution, sender)
+	local validSource = false
 	if (distribution == "WHISPER") then
 		local friendInfo = C_FriendList.GetFriendInfo(sender)
 		if(friendInfo and friendInfo.name and friendInfo.connected) then
-			--and (UnitInRaid(sender) or UnitInParty(sender))
-			local ok, bgData = WSGPremade:Deserialize(message);
-			if (not ok) then
-				WSGPremade.Print(string.format('Could not deserialize data'))
-				return;
-			end
-			if(bgData == nil) then
-				WSGPremade.Print('bgData is nil')
-				return
-			end
-			if (sender == UnitName("player")) then
-				return;	-- Ignore broadcast messages from myself
-			end
-			WSGPremadeGUI:SetPlayerData(sender, bgData)
+			validSource = true;
 		end
+	elseif(distribution == "RAID" or distribution == "PARTY") then
+		validSource = true
+	end
+	if(validSource) then
+		--and (UnitInRaid(sender) or UnitInParty(sender))
+		local ok, bgData = WSGPremade:Deserialize(message);
+		if (not ok) then
+			WSGPremade.Print(string.format('Could not deserialize data'))
+			return;
+		end
+		if(bgData == nil) then
+			WSGPremade.Print('bgData is nil')
+			return
+		end
+		if (sender == UnitName("player")) then
+			return;	-- Ignore broadcast messages from myself
+		end
+		WSGPremadeGUI:SetPlayerData(sender, bgData)
 	end
 end
 
