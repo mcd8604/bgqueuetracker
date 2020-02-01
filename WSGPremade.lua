@@ -92,7 +92,7 @@ function WSGPremade:CheckBGStatus(bgid)
 	WSGPremadeGUI:SetPlayerData(playerName, bgData)
 	local serializedData = WSGPremade:Serialize(bgData)
 	WSGPremade:broadcastToGroup(serializedData)
-	WSGPremade:broadcastToFriends(serializedData)
+	--WSGPremade:broadcastToFriends(serializedData)
 	--nextBroadcastData = bgData
 	--C_FriendList.ShowFriends()
 end
