@@ -30,14 +30,12 @@ function WSGPremade:OnEnable()
 end
 
 function WSGPremade:Reload()
-	self:UPDATE_BATTLEFIELD_STATUS()
 end
 
-local BG_ID_AV = 1
-local BG_ID_WSG = 2
-function WSGPremade:UPDATE_BATTLEFIELD_STATUS()
-	WSGPremade:CheckBGStatus(BG_ID_AV)
-	WSGPremade:CheckBGStatus(BG_ID_WSG)
+function WSGPremade:UPDATE_BATTLEFIELD_STATUS(event, bgid)
+	if(bgid == 1 or bgid == 2) then
+		WSGPremade:CheckBGStatus(bgid)
+	end
 end
 
 --function WSGPremade:FRIENDLIST_UPDATE()
