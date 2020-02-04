@@ -41,7 +41,7 @@ function GUI:PrepareGUI()
 	_G["WSGPremadeGUI_MainFrame"] = mainFrame
 	tinsert(UISpecialFrames, "WSGPremadeGUI_MainFrame")	-- allow ESC close
 	mainFrame:SetTitle("WSG Premade")
-	mainFrame:SetWidth(400)
+	mainFrame:SetWidth(420)
 	mainFrame:SetLayout("Fill")
 	mainFrame:EnableResize(true)
 	--mainFrame.TimeSinceLastUpdate = 0
@@ -71,7 +71,7 @@ function GUI:PrepareGUI()
 
 	tabGroup = AceGUI:Create("TabGroup")
 	tabGroup:SetTabs({{text="Group", value="group"}, {text="Friends", value="friends"}})
-	tabGroup:SetLayout("Fill")
+	tabGroup:SetLayout("Flow")
 	tabGroup:SetCallback("OnGroupSelected", function (c, e, g) GUI:DrawScrollFrame(c, e, g) end)
 	tabGroup:SetStatusTable({})
 	mainFrame:AddChild(tabGroup)
@@ -83,49 +83,113 @@ function GUI:DrawScrollFrame(container, event, group)
 	container:ReleaseChildren()
 	scroll = AceGUI:Create("ScrollFrame")
 	scroll:SetLayout("Flow")
-	container:AddChild(scroll)
+	scroll:SetFullWidth(true)
+	scroll:SetFullHeight(true)
 	if group == "group" then
 		--treeView = AceGUI:Create("TreeGroup")
 		--treeView:SetTree(tree)
 		--container:AddChild(treeView)
-		GUI:DrawGroups()
+		local tableHeader = GUI:CreateTableHeader()
+		container:AddChild(tableHeader)
+		container:AddChild(scroll)
+		GUI:DrawGroups(scroll)
 	elseif currentTab == "friends" then
-		for name, player in pairs(playerTable) do
-			GUI:DrawPlayerLabels(name, player, group, scroll)
-		end
+		--for name, player in pairs(playerTable) do
+		--	GUI:DrawPlayerLabels(name, player, group, scroll)
+		--end
 	end
 end
 
-function GUI:DrawGroups()
+function GUI:CreateTableHeader()
+	local tableHeader = AceGUI:Create("SimpleGroup")
+	tableHeader:SetFullWidth(true)
+	tableHeader:SetLayout("Flow")
+
+	local btn = AceGUI:Create("Label")
+	btn:SetWidth(80)
+	btn:SetText("Name")
+	tableHeader:AddChild(btn)
+
+	btn = AceGUI:Create("Label")
+	btn:SetWidth(120)
+	btn:SetText("Alterac Valley")
+	tableHeader:AddChild(btn)
+
+	btn = AceGUI:Create("Label")
+	btn:SetWidth(120)
+	btn:SetText("Warsong Gulch")
+	tableHeader:AddChild(btn)
+	
+	return tableHeader
+end
+
+function GUI:DrawGroups(container)
 	for i, group in ipairs(groupList) do
 		local groupWidget = AceGUI:Create("SimpleGroup")
+		groupWidget:SetFullWidth(true)
+		local groupHeader = AceGUI:Create("Heading")
+		groupHeader:SetText("Group")
+		groupHeader:SetFullWidth(true)
+		groupWidget:AddChild(groupHeader)
 		updatePlayerTime(player)
 		for name, playerGroupData in pairs(group) do
 			local player = playerTable[name]
+			local row = nil
 			if(player) then
-				GUI:DrawPlayerLabel(name, player, "group", groupWidget)
+				row = GUI:CreatePlayerRow(name, player.elapsed, player.bgs[1], player.bgs[2])
+			else 
+				row = GUI:CreatePlayerRow(name, 0, nil, nil)
 			end
+			groupWidget:AddChild(row)
 		end
-		scroll:AddChild(groupWidget)
+		container:AddChild(groupWidget)
 	end	
 end
 
-function GUI:DrawPlayerLabel(name, player, currentTab, parentContainer)
-	local valid = false
-	if currentTab == "group" and (name == UnitName("player") or UnitInParty(name) or UnitInRaid(name)) then
-		valid = true
-	elseif currentTab == "friends" then
-		friendInfo = C_FriendList.GetFriendInfo(name) 
-		if(friendInfo and friendInfo.name) then 
-			valid = true
+function GUI:CreatePlayerRow(name, elapsed, av, wsg)
+	local row = AceGUI:Create("SimpleGroup")
+	row:SetFullWidth(true)
+	row:SetLayout("Flow")
+
+	local btn = AceGUI:Create("Label")
+	btn:SetWidth(80)
+	btn:SetText(name)
+	row:AddChild(btn)
+	
+	if(elapsed) then
+		if(av) then 
+			btn = AceGUI:Create("Label")
+			btn:SetWidth(120)
+			btn:SetText(getBGText(elapsed, av, false))
+			row:AddChild(btn)
+		end
+		if(wsg) then
+			btn = AceGUI:Create("Label")
+			btn:SetWidth(120)
+			btn:SetText(getBGText(elapsed, wsg, false))
+			row:AddChild(btn)
 		end
 	end
-	if(valid) then
-		player.display = GUI:CreatePlayerDisplay(player)
-		updatePlayerDisplay(player)
-		parentContainer:AddChild(player.display)
-	end
+	
+	return row
 end
+
+--function GUI:DrawPlayerLabel(name, player, currentTab, parentContainer)
+--	local valid = false
+--	if currentTab == "group" and (name == UnitName("player") or UnitInParty(name) or UnitInRaid(name)) then
+--		valid = true
+--	elseif currentTab == "friends" then
+--		friendInfo = C_FriendList.GetFriendInfo(name) 
+--		if(friendInfo and friendInfo.name) then 
+--			valid = true
+--		end
+--	end
+--	if(valid) then
+--		player.display = GUI:CreatePlayerDisplay(player)
+--		updatePlayerDisplay(player)
+--		parentContainer:AddChild(player.display)
+--	end
+--end
 
 function GUI:SetPlayerData(playerName, bgData)
 	player = playerTable[playerName]
@@ -154,8 +218,10 @@ function GUI:SetPlayerData(playerName, bgData)
 end
 
 function GUI:AddGroup(groupData)
-	intersections = GUI:RemoveIntersectingGroups(groupData)
-	table.insert(groupList, groupData)
+	if (groupData and next(groupData) ~= nil) then
+		intersections = GUI:RemoveIntersectingGroups(groupData)
+		table.insert(groupList, groupData)
+	end
 end
 
 function GUI:RemoveIntersectingGroups(groupData)
@@ -277,7 +343,7 @@ function updatePlayerDisplay(player)
 	if player then
 		updatePlayerTime(player)
 		for bgid, bgData in pairs(player.bgs) do
-			player.bgLabels[bgid]:SetText(getBGText(player.elapsed, bgData))
+			player.bgLabels[bgid]:SetText(getBGText(player.elapsed, bgData, true))
 		end
 		-- Do a quick recheck incase the text got bigger in the update without something being removed/added
 		--if( longestText < (self.text:GetStringWidth() + 10) ) then
@@ -293,7 +359,7 @@ function updatePlayerTime(player)
 	player.lastUpdate = time
 end
 
-function getBGText(elapsed, bgData)	
+function getBGText(elapsed, bgData, prependMap)
 	text = nil
 	if(bgData) then
 		if(bgData.suspendedQueue) then
@@ -305,7 +371,7 @@ function getBGText(elapsed, bgData)
 		elseif(bgData.status == "queued") then
 			text = string.format("%s (%s)", formatShortTime(bgData.waitTime + elapsed or 0), formatShortTime(bgData.estTime or 0))
 		end
-		if(text ~= nil) then
+		if(text ~= nil and prependMap) then
 			text = string.format("%s: %s", bgData.map, text)
 		end
 	end

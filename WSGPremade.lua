@@ -73,7 +73,7 @@ function WSGPremade:GetGroupData()
 		if name then
 			_, realm = UnitName(name)
 			-- realm is nil if they're from the same realm
-			if realm == nil then
+			if realm == nil or realm == '' then
 				groupData[name] = {
 					class = class,
 					isLead = rank == 2,
