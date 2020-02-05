@@ -4,12 +4,14 @@ local addonName = GetAddOnMetadata("WSGPremade", "Title");
 local commPrefix = addonName .. "1";
 
 local playerName = UnitName("player");
+local playerBGTimes = {}
+local prevBGData = {}
 local groups = {}
 
 function WSGPremade:OnInitialize()
 	self.db = LibStub("AceDB-3.0"):New("WSGPremadeDB", {
 		factionrealm = {
-			channelName = "WSGPremade"
+			queueHistory = { {}, {} }
 		}
 	}, true)
 
@@ -46,6 +48,17 @@ end
 --	end
 --end
 
+function WSGPremade:CheckBGStatus(bgid)
+	local bgData = WSGPremade:GetBGStatus(bgid)		
+	WSGPremade:UpdatePlayerBGTimes(bgData)	
+	WSGPremadeGUI:SetPlayerData(playerName, bgData)
+	local serializedData = WSGPremade:Serialize(bgData)
+	WSGPremade:broadcastToGroup(serializedData)
+	--WSGPremade:broadcastToFriends(serializedData)
+	--nextBroadcastData = bgData
+	--C_FriendList.ShowFriends()
+end
+
 function WSGPremade:GetBGStatus(bgid)
 	local status, map, instanceID, isRegistered, suspendedQueue, queueType, gameType, role = GetBattlefieldStatus(bgid)
 	local bgData = {
@@ -66,6 +79,74 @@ function WSGPremade:GetBGStatus(bgid)
 	return bgData
 end
 
+function WSGPremade:UpdatePlayerBGTimes(bgData)
+	WSGPremade:Print(format('%s status=%s', bgData.map, bgData.status))
+	if playerBGTimes[bgData.bgid] == nil then
+		WSGPremade:startQueue(bgData)
+	end
+	if(bgData.waitTime > 2000) then
+		playerBGTimes[bgData.bgid].waitDuration = bgData.waitTime
+	end
+	if(bgData.estTime > 0) then
+		playerBGTimes[bgData.bgid].finalEst = bgData.estTime
+	end
+	if(bgData.status == "none") then
+		-- queue ended
+		table.insert(self.db.factionrealm.queueHistory[bgData.bgid], playerBGTimes[bgData.bgid])
+		playerBGTimes[bgData.bgid] = nil
+	elseif(bgData.status == "queued") then
+		WSGPremade:checkPause(bgData)
+	elseif(bgData.status == "confirm") then
+	elseif(bgData.status == "active") then
+		local runTime = GetBattlefieldInstanceRunTime() 
+		WSGPremade:Print(format('bg active: activeDuration=%i', runTime))
+		playerBGTimes[bgData.bgid].activeDuration = runTime
+	end
+	prevBGData[bgData.bgid] = bgData
+end
+
+function WSGPremade:startQueue(bgData)
+	WSGPremade:Print(format('new queue started: waitTime=%i', bgData.waitTime))
+	-- track the duration in queue (wait time)
+	-- track the durations that a queue is paused
+	-- track the duration for an active BG
+	playerBGTimes[bgData.bgid] = {
+		waitDuration = bgData.waitTime,
+		initialEst = bgData.estTime,
+		finalEst = bgData.estTime,
+		queuePauses = {},
+		activeDuration = 0
+	}
+end
+
+function WSGPremade:checkPause(bgData)
+	if prevBGData and prevBGData[bgData.bgid] and bgData.waitTime > 2000 then
+		local numPauses = #(playerBGTimes[bgData.bgid].queuePauses)
+		-- new pause starts if prev data has est time > 0 and current data has est == 0
+		if (prevBGData.estTime and prevBGData.estTime > 0) and (not bgData.estTime or bgData.estTime == 0)  then
+			table.insert(playerBGTimes[bgData.bgid].queuePauses, { start = bgData.waitTime, stop = 0 })
+			WSGPremade:Print(format('new pause: start=%i', bgData.waitTime))
+		-- pause continues if prev data has est time == 0 and current data has est == 0	
+		-- pause ends if prev data has est time == 0 and current data has est > 0
+		elseif (not prevBGData.estTime or prevBGData.estTime == 0) and (bgData.estTime and bgData.estTime > 0) and numPauses > 0 then
+			playerBGTimes[bgData.bgid].queuePauses[numPauses].stop = bgData.waitTime
+			WSGPremade:Print(format('pause end: stop=%i', bgData.waitTime))
+		end
+		--if bgData.estTime == 0 and then
+		--	local numPauses = #(playerBGTimes[bgData.bgid].queuePauses)
+		--	if(numPauses == 0 or playerBGTimes[bgData.bgid].queuePauses[numPauses].stop > 0) then
+		--		-- new pause started
+		--		table.insert(playerBGTimes[bgData.bgid].queuePauses, { start = bgData.waitTime, stop = 0 })
+		--		WSGPremade:Print(format('new pause: start=%i', bgData.waitTime))
+		--	else
+		--		-- last pause ended
+		--		playerBGTimes[bgData.bgid].queuePauses[#playerBGTimes[bgData.bgid].queuePauses].stop = bgData.waitTime
+		--		WSGPremade:Print(format('pause end: stop=%i', bgData.waitTime))
+		--	end
+		--end
+	end
+end
+
 function WSGPremade:GetGroupData()
 	groupData = {}
 	for i = 1, GetNumGroupMembers() do
@@ -83,16 +164,6 @@ function WSGPremade:GetGroupData()
 		end
 	end
 	return groupData
-end
-
-function WSGPremade:CheckBGStatus(bgid)
-	local bgData = WSGPremade:GetBGStatus(bgid)
-	WSGPremadeGUI:SetPlayerData(playerName, bgData)
-	local serializedData = WSGPremade:Serialize(bgData)
-	WSGPremade:broadcastToGroup(serializedData)
-	--WSGPremade:broadcastToFriends(serializedData)
-	--nextBroadcastData = bgData
-	--C_FriendList.ShowFriends()
 end
 
 function WSGPremade:broadcastToChannel(channel, msg)
