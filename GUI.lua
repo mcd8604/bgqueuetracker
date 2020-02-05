@@ -112,12 +112,12 @@ function GUI:CreateTableHeader()
 
 	btn = AceGUI:Create("Label")
 	btn:SetWidth(120)
-	btn:SetText("Alterac Valley")
+	btn:SetText("Warsong Gulch")
 	tableHeader:AddChild(btn)
 
 	btn = AceGUI:Create("Label")
 	btn:SetWidth(120)
-	btn:SetText("Warsong Gulch")
+	btn:SetText("Alterac Valley")
 	tableHeader:AddChild(btn)
 	
 	return tableHeader
