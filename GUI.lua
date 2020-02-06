@@ -136,9 +136,9 @@ function GUI:DrawGroups(container)
 			local player = playerTable[name]
 			local row = nil
 			if(player) then
-				row = GUI:CreatePlayerRow(name, player.elapsed, player.bgs[1], player.bgs[2])
+				row = GUI:CreatePlayerRow(name, player)
 			else 
-				row = GUI:CreatePlayerRow(name, 0, nil, nil)
+				row = GUI:CreatePlayerRow(name, nil)
 			end
 			groupWidget:AddChild(row)
 		end
@@ -146,32 +146,71 @@ function GUI:DrawGroups(container)
 	end	
 end
 
-function GUI:CreatePlayerRow(name, elapsed, av, wsg)
+function GUI:CreatePlayerRow(name, player)
 	local row = AceGUI:Create("SimpleGroup")
 	row:SetFullWidth(true)
 	row:SetLayout("Flow")
 
-	local btn = AceGUI:Create("Label")
+	local btn = AceGUI:Create("InteractiveLabel")
 	btn:SetWidth(80)
 	btn:SetText(name)
 	row:AddChild(btn)
 	
-	if(elapsed) then
+	if(player) then
+		av = player.bgs[1]
+		wsg = player.bgs[2]
 		if(av) then 
-			btn = AceGUI:Create("Label")
+			btn = AceGUI:Create("InteractiveLabel")
 			btn:SetWidth(120)
-			btn:SetText(getBGText(elapsed, av, false))
+			btn:SetText(getBGText(player.elapsed, av, false))
+			btn.highlight:SetColorTexture(0.3, 0.3, 0.3, 0.5)
+			GUI:setTimeTooltip(btn, player.timeData[1])
 			row:AddChild(btn)
 		end
 		if(wsg) then
-			btn = AceGUI:Create("Label")
+			btn = AceGUI:Create("InteractiveLabel")
 			btn:SetWidth(120)
-			btn:SetText(getBGText(elapsed, wsg, false))
+			btn:SetText(getBGText(player.elapsed, wsg, false))
+			btn.highlight:SetColorTexture(0.3, 0.3, 0.3, 0.5)
+			GUI:setTimeTooltip(btn, player.timeData[2])
 			row:AddChild(btn)
 		end
 	end
 	
 	return row
+end
+
+function GUI:setTimeTooltip(widget, data)
+	widget:SetCallback("OnEnter", function (widget, event) 
+		GameTooltip:SetOwner(mainFrame.frame, "ANCHOR_CURSOR");
+		GameTooltip:SetText("Queue Details", 1, 1, 1, 1, 1)
+		GameTooltip:AddDoubleLine("Start Time:", SecondsToTime(data.startTime), 1,1,1, 1,1,1)
+		GameTooltip:AddDoubleLine("Time Waited:", formatShortTime(data.waitDuration), 1,1,1, 1,1,1)
+		GameTooltip:AddDoubleLine("Initial Estimate:", formatShortTime(data.initialEst), 1,1,1, 1,1,1)
+		GameTooltip:AddDoubleLine("Current Estimate:", formatShortTime(data.finalEst), 1,1,1, 1,1,1)
+		if(data.pauses) then
+			local totalPauseDuration = 0
+			GameTooltip:AddLine(format("#i Pauses", #data.pauses), 1, 1, 1, 1, 1)
+			for i, p in data.pauses do
+				local pauseStart = SecondsToTime(data.start + p.start)
+				local pauseEnd = SecondsToTime(data.stop + p.stop)
+				local pauseDuration = p.stop - p.start
+				totalPauseDuration = totalPauseDuration + pauseDuration
+				GameTooltip:AddLine(format("%s to %s (%s)", pauseStart, pauseEnd, formatShortTime(pauseDuration)), 1, 1, 1, 1, 1)
+			end
+			GameTooltip:AddDoubleLine("Total Time Paused:", formatShortTime(data.totalPauseDuration), 1,1,1, 1,1,1)
+			local adjustedEst = data.finalEst + data.totalPauseDuration
+			GameTooltip:AddDoubleLine("Adjusted Estimate:", formatShortTime(adjustedEst), 1,1,1, 0.5,0.5,1)
+			local remaining = formatShortTime(adjustedEst - waitTime)
+			local r,g,b = 0.5,1,0.5
+			if remaining < 0 then
+				r,g,b = 1,0.5,0.5
+			end
+			GameTooltip:AddDoubleLine("Remaining Time:", remaining, 1,1,1, r,g,b)
+		end
+		GameTooltip:Show()
+	end)
+	widget:SetCallback("OnLeave", function (widget, event) GameTooltip:Hide() end)
 end
 
 --function GUI:DrawPlayerLabel(name, player, currentTab, parentContainer)
@@ -191,19 +230,21 @@ end
 --	end
 --end
 
-function GUI:SetPlayerData(playerName, bgData)
+function GUI:SetPlayerData(playerName, bgData, bgTimes)
 	player = playerTable[playerName]
 	if player then
 		--table.insert(player.bgs, bgData.bgid, bgData)
 		player.bgs[bgData.bgid] = bgData
 		player.lastUpdate = GetTime()
 		player.elapsed = 0
+		player.timeData = bgTimes
 	else
 		player = {
 			name = playerName,
 			bgs = {},
 			display = {},
 			bgLabels = {},
+			timeData = {},
 			lastUpdate = GetTime(),
 			elapsed = 0
 		}

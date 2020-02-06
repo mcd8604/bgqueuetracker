@@ -51,8 +51,8 @@ end
 function WSGPremade:CheckBGStatus(bgid)
 	local bgData = WSGPremade:GetBGStatus(bgid)		
 	WSGPremade:UpdatePlayerBGTimes(bgData)
-	WSGPremadeGUI:SetPlayerData(playerName, bgData)
-	local serializedData = WSGPremade:Serialize(bgData)
+	WSGPremadeGUI:SetPlayerData(playerName, bgData, playerBGTimes)
+	local serializedData = WSGPremade:Serialize(bgData, playerBGTimes)
 	WSGPremade:broadcastToGroup(serializedData)
 	--WSGPremade:broadcastToFriends(serializedData)
 	--nextBroadcastData = bgData
@@ -80,7 +80,7 @@ function WSGPremade:GetBGStatus(bgid)
 end
 
 function WSGPremade:UpdatePlayerBGTimes(bgData)
-	WSGPremade:Print(format('%s status=%s', bgData.map or '', bgData.status or ''))
+	--WSGPremade:Print(format('%s status=%s', bgData.map or '', bgData.status or ''))
 	if playerBGTimes[bgData.bgid] == nil then
 		WSGPremade:startQueue(bgData)
 	end
@@ -99,7 +99,7 @@ function WSGPremade:UpdatePlayerBGTimes(bgData)
 	elseif(bgData.status == "confirm") then
 	elseif(bgData.status == "active") then
 		local runTime = GetBattlefieldInstanceRunTime() 
-		WSGPremade:Print(format('bg active: activeDuration=%i', runTime))
+		--WSGPremade:Print(format('bg active: activeDuration=%i', runTime))
 		playerBGTimes[bgData.bgid].activeDuration = runTime
 	end
 	prevBGData[bgData.bgid] = bgData
@@ -124,12 +124,12 @@ function WSGPremade:checkPause(bgData)
 	if prevBGData and prevBGData[bgData.bgid] and bgData.waitTime > 2000 then
 		local numPauses = #(playerBGTimes[bgData.bgid].queuePauses)
 		-- new pause starts if prev data has est time > 0 and current data has est == 0
-		if (prevBGData.estTime and prevBGData.estTime > 0) and (not bgData.estTime or bgData.estTime == 0)  then
+		if (prevBGData[bgData.bgid].estTime and prevBGData[bgData.bgid].estTime > 0) and (not bgData.estTime or bgData.estTime == 0)  then
 			table.insert(playerBGTimes[bgData.bgid].queuePauses, { start = bgData.waitTime, stop = 0 })
 			WSGPremade:Print(format('new pause: start=%i', bgData.waitTime))
 		-- pause continues if prev data has est time == 0 and current data has est == 0	
 		-- pause ends if prev data has est time == 0 and current data has est > 0
-		elseif (not prevBGData.estTime or prevBGData.estTime == 0) and (bgData.estTime and bgData.estTime > 0) and numPauses > 0 then
+		elseif (not prevBGData[bgData.bgid].estTime or prevBGData[bgData.bgid].estTime == 0) and (bgData.estTime and bgData.estTime > 0) and numPauses > 0 then
 			playerBGTimes[bgData.bgid].queuePauses[numPauses].stop = bgData.waitTime
 			WSGPremade:Print(format('pause end: stop=%i', bgData.waitTime))
 		end
@@ -210,7 +210,7 @@ function WSGPremade:OnCommReceive(prefix, message, distribution, sender)
 	end
 	if(validSource) then
 		--and (UnitInRaid(sender) or UnitInParty(sender))
-		local ok, bgData = WSGPremade:Deserialize(message);
+		local ok, bgData, bgTimes = WSGPremade:Deserialize(message);
 		if (not ok) then
 			WSGPremade.Print(string.format('Could not deserialize data'))
 			return;
@@ -222,7 +222,7 @@ function WSGPremade:OnCommReceive(prefix, message, distribution, sender)
 		if (sender == UnitName("player")) then
 			return;	-- Ignore broadcast messages from myself
 		end
-		WSGPremadeGUI:SetPlayerData(sender, bgData)
+		WSGPremadeGUI:SetPlayerData(sender, bgData, bgTimes)
 	end
 end
 
