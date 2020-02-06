@@ -50,7 +50,7 @@ end
 
 function WSGPremade:CheckBGStatus(bgid)
 	local bgData = WSGPremade:GetBGStatus(bgid)		
-	WSGPremade:UpdatePlayerBGTimes(bgData)	
+	WSGPremade:UpdatePlayerBGTimes(bgData)
 	WSGPremadeGUI:SetPlayerData(playerName, bgData)
 	local serializedData = WSGPremade:Serialize(bgData)
 	WSGPremade:broadcastToGroup(serializedData)
@@ -111,6 +111,7 @@ function WSGPremade:startQueue(bgData)
 	-- track the durations that a queue is paused
 	-- track the duration for an active BG
 	playerBGTimes[bgData.bgid] = {
+		startTime = GetServerTime(),
 		waitDuration = bgData.waitTime,
 		initialEst = bgData.estTime,
 		finalEst = bgData.estTime,
