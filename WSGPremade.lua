@@ -80,7 +80,7 @@ function WSGPremade:GetBGStatus(bgid)
 end
 
 function WSGPremade:UpdatePlayerBGTimes(bgData)
-	WSGPremade:Print(format('%s status=%s', bgData.map, bgData.status))
+	WSGPremade:Print(format('%s status=%s', bgData.map or '', bgData.status or ''))
 	if playerBGTimes[bgData.bgid] == nil then
 		WSGPremade:startQueue(bgData)
 	end
