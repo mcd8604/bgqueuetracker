@@ -11,10 +11,11 @@ local groups = {}
 function WSGPremade:OnInitialize()
 	self.db = LibStub("AceDB-3.0"):New("WSGPremadeDB", {
 		factionrealm = {
-			queueHistory = { {}, {} }
+			queueHistory = { {}, {} },
+			currentQueueTimes = {}
 		}
 	}, true)
-
+	playerBGTimes = self.db.factionrealm.currentQueueTimes
 	--self:RegisterEvent("CHAT_MSG_COMBAT_HONOR_GAIN", CHAT_MSG_COMBAT_HONOR_GAIN_EVENT);
 	self:RegisterComm(commPrefix, "OnCommReceive")
 	self:RegisterEvent("PLAYER_DEAD");
@@ -81,40 +82,41 @@ end
 
 function WSGPremade:UpdatePlayerBGTimes(bgData)
 	--WSGPremade:Print(format('%s status=%s', bgData.map or '', bgData.status or ''))
-	if playerBGTimes[bgData.bgid] == nil then
-		WSGPremade:startQueue(bgData)
-	end
 	if(bgData.waitTime > 2000) then
+		if playerBGTimes[bgData.bgid] == nil then
+			WSGPremade:startQueue(bgData)
+		end
 		playerBGTimes[bgData.bgid].waitDuration = bgData.waitTime
-	end
-	if(bgData.estTime > 0) then
-		playerBGTimes[bgData.bgid].finalEst = bgData.estTime
-	end
-	if(bgData.status == "none") then
-		-- queue ended
-		table.insert(self.db.factionrealm.queueHistory[bgData.bgid], playerBGTimes[bgData.bgid])
-		playerBGTimes[bgData.bgid] = nil
-	elseif(bgData.status == "queued") then
-		WSGPremade:checkPause(bgData)
-	elseif(bgData.status == "confirm") then
-	elseif(bgData.status == "active") then
-		local runTime = GetBattlefieldInstanceRunTime() 
-		--WSGPremade:Print(format('bg active: activeDuration=%i', runTime))
-		playerBGTimes[bgData.bgid].activeDuration = runTime
+		if(bgData.estTime > 0) then
+			playerBGTimes[bgData.bgid].finalEst = bgData.estTime
+		end
+		if(bgData.status == "none") then
+			-- queue ended
+			table.insert(self.db.factionrealm.queueHistory[bgData.bgid], playerBGTimes[bgData.bgid])
+			playerBGTimes[bgData.bgid] = nil
+		elseif(bgData.status == "queued") then
+			WSGPremade:checkPause(bgData)
+		elseif(bgData.status == "confirm") then
+		elseif(bgData.status == "active") then
+			local runTime = GetBattlefieldInstanceRunTime() 
+			--WSGPremade:Print(format('bg active: activeDuration=%i', runTime))
+			playerBGTimes[bgData.bgid].activeDuration = runTime
+		end
 	end
 	prevBGData[bgData.bgid] = bgData
 end
 
 function WSGPremade:startQueue(bgData)
-	WSGPremade:Print(format('new queue started: waitTime=%i', bgData.waitTime))
+	--WSGPremade:Print(format('new queue started: waitTime=%i', bgData.waitTime))
 	-- track the duration in queue (wait time)
 	-- track the durations that a queue is paused
 	-- track the duration for an active BG
 	playerBGTimes[bgData.bgid] = {
-		startTime = GetServerTime(),
+		startTime = GetServerTime() - bgData.waitTime,
 		waitDuration = bgData.waitTime,
 		initialEst = bgData.estTime,
 		finalEst = bgData.estTime,
+		currentPause = nil,
 		queuePauses = {},
 		activeDuration = 0
 	}
@@ -122,16 +124,19 @@ end
 
 function WSGPremade:checkPause(bgData)
 	if prevBGData and prevBGData[bgData.bgid] and bgData.waitTime > 2000 then
-		local numPauses = #(playerBGTimes[bgData.bgid].queuePauses)
+		local timeData = playerBGTimes[bgData.bgid]
+		local prev = prevBGData[bgData.bgid]
 		-- new pause starts if prev data has est time > 0 and current data has est == 0
-		if (prevBGData[bgData.bgid].estTime and prevBGData[bgData.bgid].estTime > 0) and (not bgData.estTime or bgData.estTime == 0)  then
-			table.insert(playerBGTimes[bgData.bgid].queuePauses, { start = bgData.waitTime, stop = 0 })
-			WSGPremade:Print(format('new pause: start=%i', bgData.waitTime))
+		if not timeData.currentPause and (prev.estTime and prev.estTime > 0) and (not bgData.estTime or bgData.estTime == 0) then
+			timeData.currentPause = { start = bgData.waitTime, stop = 0 }
+			--WSGPremade:Print(format('new pause: start=%i', bgData.waitTime))
 		-- pause continues if prev data has est time == 0 and current data has est == 0	
 		-- pause ends if prev data has est time == 0 and current data has est > 0
-		elseif (not prevBGData[bgData.bgid].estTime or prevBGData[bgData.bgid].estTime == 0) and (bgData.estTime and bgData.estTime > 0) and numPauses > 0 then
-			playerBGTimes[bgData.bgid].queuePauses[numPauses].stop = bgData.waitTime
-			WSGPremade:Print(format('pause end: stop=%i', bgData.waitTime))
+		elseif timeData.currentPause and (not prev.estTime or prev.estTime == 0) and (bgData.estTime and bgData.estTime > 0) then
+			timeData.currentPause.stop = bgData.waitTime
+			table.insert(timeData.queuePauses, timeData.currentPause)
+			timeData.currentPause = nil
+			--WSGPremade:Print(format('pause end: stop=%i', bgData.waitTime))
 		end
 		--if bgData.estTime == 0 and then
 		--	local numPauses = #(playerBGTimes[bgData.bgid].queuePauses)

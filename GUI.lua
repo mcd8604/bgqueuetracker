@@ -112,12 +112,12 @@ function GUI:CreateTableHeader()
 
 	btn = AceGUI:Create("Label")
 	btn:SetWidth(120)
-	btn:SetText("Warsong Gulch")
+	btn:SetText("Alterac Valley")
 	tableHeader:AddChild(btn)
 
 	btn = AceGUI:Create("Label")
 	btn:SetWidth(120)
-	btn:SetText("Alterac Valley")
+	btn:SetText("Warsong Gulch")
 	tableHeader:AddChild(btn)
 	
 	return tableHeader
@@ -184,29 +184,40 @@ function GUI:setTimeTooltip(widget, data)
 	widget:SetCallback("OnEnter", function (widget, event) 
 		GameTooltip:SetOwner(mainFrame.frame, "ANCHOR_CURSOR");
 		GameTooltip:SetText("Queue Details", 1, 1, 1, 1, 1)
-		GameTooltip:AddDoubleLine("Start Time:", SecondsToTime(data.startTime), 1,1,1, 1,1,1)
+		--GameTooltip:AddDoubleLine("Start Time:", date("%H:%M:%S", data.startTime), 1,1,1, 1,1,1)
 		GameTooltip:AddDoubleLine("Time Waited:", formatShortTime(data.waitDuration), 1,1,1, 1,1,1)
 		GameTooltip:AddDoubleLine("Initial Estimate:", formatShortTime(data.initialEst), 1,1,1, 1,1,1)
 		GameTooltip:AddDoubleLine("Current Estimate:", formatShortTime(data.finalEst), 1,1,1, 1,1,1)
-		if(data.pauses) then
+		if(data.queuePauses) then
 			local totalPauseDuration = 0
-			GameTooltip:AddLine(format("#i Pauses", #data.pauses), 1, 1, 1, 1, 1)
-			for i, p in data.pauses do
-				local pauseStart = SecondsToTime(data.start + p.start)
-				local pauseEnd = SecondsToTime(data.stop + p.stop)
+			GameTooltip:AddLine(format("Pauses (%i)", #data.queuePauses), 1, 1, 1, 1, 1)
+			for i, p in ipairs(data.queuePauses) do
 				local pauseDuration = p.stop - p.start
-				totalPauseDuration = totalPauseDuration + pauseDuration
-				GameTooltip:AddLine(format("%s to %s (%s)", pauseStart, pauseEnd, formatShortTime(pauseDuration)), 1, 1, 1, 1, 1)
+				if(pauseDuration > 0) then
+					totalPauseDuration = totalPauseDuration + pauseDuration
+				end
+				GameTooltip:AddLine(
+					format(
+						"(%s)",
+						--"%s to %s (%s)", 
+						--date("%H:%M:%S", data.startTime + p.start), 
+						--date("%H:%M:%S", data.startTime + p.stop), 
+						formatShortTime(pauseDuration)
+					), 1, 1, 1, 1, 1)
 			end
-			GameTooltip:AddDoubleLine("Total Time Paused:", formatShortTime(data.totalPauseDuration), 1,1,1, 1,1,1)
-			local adjustedEst = data.finalEst + data.totalPauseDuration
-			GameTooltip:AddDoubleLine("Adjusted Estimate:", formatShortTime(adjustedEst), 1,1,1, 0.5,0.5,1)
-			local remaining = formatShortTime(adjustedEst - waitTime)
+			GameTooltip:AddDoubleLine("Total Time Paused:", formatShortTime(totalPauseDuration), 1,1,1, 1,1,1)
+			local adjustedEst = data.finalEst + totalPauseDuration
+			--GameTooltip:AddDoubleLine("Adjusted Estimate:", formatShortTime(adjustedEst), 1,1,1, 0.5,0.5,1)
+			local remaining = adjustedEst - data.waitDuration
 			local r,g,b = 0.5,1,0.5
-			if remaining < 0 then
+			local isNegative = remaining < 0
+			local remainingPrefix = ''
+			if isNegative then
 				r,g,b = 1,0.5,0.5
-			end
-			GameTooltip:AddDoubleLine("Remaining Time:", remaining, 1,1,1, r,g,b)
+				remainingPrefix = '-'
+			end			
+			GameTooltip:AddDoubleLine("Remaining Time:", remainingPrefix..formatShortTime(math.abs(remaining)), 1,1,1, r,g,b)
+			--GameTooltip:AddDoubleLine("Queue Pops At:", date("%H:%M:%S", GetServerTime() + remaining), 1,1,1, 0.5,0.5,1)
 		end
 		GameTooltip:Show()
 	end)
@@ -370,9 +381,9 @@ function formatShortTime(milliseconds)
 		minutes = floor(seconds / 60)
 		seconds = mod(seconds, 60)
 	end	
-	if( seconds < 0 ) then
-		seconds = 0
-	end
+	--if( seconds < 0 ) then
+	--	seconds = 0
+	--end
 	if( hours > 0 ) then
 		return string.format("%d:%02d:%02d", hours, minutes, seconds)
 	else
