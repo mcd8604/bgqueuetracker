@@ -81,27 +81,29 @@ function WSGPremade:GetBGStatus(bgid)
 end
 
 function WSGPremade:UpdatePlayerBGTimes(bgData)
-	--WSGPremade:Print(format('%s status=%s', bgData.map or '', bgData.status or ''))
-	if(bgData.waitTime > 2000) then
-		if playerBGTimes[bgData.bgid] == nil then
-			WSGPremade:startQueue(bgData)
-		end
-		playerBGTimes[bgData.bgid].waitDuration = bgData.waitTime
-		if(bgData.estTime > 0) then
-			playerBGTimes[bgData.bgid].finalEst = bgData.estTime
-		end
-		if(bgData.status == "none") then
-			-- queue ended
-			table.insert(self.db.factionrealm.queueHistory[bgData.bgid], playerBGTimes[bgData.bgid])
-			playerBGTimes[bgData.bgid] = nil
-		elseif(bgData.status == "queued") then
-			WSGPremade:checkPause(bgData)
-		elseif(bgData.status == "confirm") then
-		elseif(bgData.status == "active") then
-			local runTime = GetBattlefieldInstanceRunTime() 
-			--WSGPremade:Print(format('bg active: activeDuration=%i', runTime))
-			playerBGTimes[bgData.bgid].activeDuration = runTime
-		end
+	--WSGPremade:Print(format('%s status=%s (%i)', bgData.map or '', bgData.status or '', bgData.waitTime))
+	if playerBGTimes[bgData.bgid] == nil then
+		--WSGPremade:Print("starting queue")
+		WSGPremade:startQueue(bgData)
+	end
+	playerBGTimes[bgData.bgid].waitDuration = bgData.waitTime
+	if(bgData.estTime > 0) then
+		playerBGTimes[bgData.bgid].finalEst = bgData.estTime
+	end
+	if(bgData.status == "none") then
+		-- queue ended
+		--WSGPremade:Print("ending queue")
+		table.insert(self.db.factionrealm.queueHistory[bgData.bgid], playerBGTimes[bgData.bgid])
+		playerBGTimes[bgData.bgid] = nil
+	elseif(bgData.status == "queued") then
+		WSGPremade:checkPause(bgData)
+	elseif(bgData.status == "confirm") then
+		--WSGPremade:Print("confirm queue")
+	elseif(bgData.status == "active") then
+		--WSGPremade:Print("active queue")
+		local runTime = GetBattlefieldInstanceRunTime() 
+		--WSGPremade:Print(format('bg active: activeDuration=%i', runTime))
+		playerBGTimes[bgData.bgid].activeDuration = runTime
 	end
 	prevBGData[bgData.bgid] = bgData
 end
@@ -120,6 +122,7 @@ function WSGPremade:startQueue(bgData)
 		queuePauses = {},
 		activeDuration = 0
 	}
+	self.db.factionrealm.currentQueueTimes[bgData.bgid] = playerBGTimes[bgData.bgid]
 end
 
 function WSGPremade:checkPause(bgData)
