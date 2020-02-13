@@ -86,7 +86,6 @@ function WSGPremade:UpdatePlayerBGTimes(bgData)
 		--WSGPremade:Print("starting queue")
 		WSGPremade:startQueue(bgData)
 	end
-	playerBGTimes[bgData.bgid].waitDuration = bgData.waitTime
 	if(bgData.estTime > 0) then
 		playerBGTimes[bgData.bgid].finalEst = bgData.estTime
 	end
@@ -98,12 +97,16 @@ function WSGPremade:UpdatePlayerBGTimes(bgData)
 	elseif(bgData.status == "queued") then
 		WSGPremade:checkPause(bgData)
 	elseif(bgData.status == "confirm") then
+		playerBGTimes[bgData.bgid].confirmStartTime = GetServerTime()
 		--WSGPremade:Print("confirm queue")
 	elseif(bgData.status == "active") then
 		--WSGPremade:Print("active queue")
-		local runTime = GetBattlefieldInstanceRunTime() 
+		playerBGTimes[bgData.bgid].activeStartTime = GetServerTime()
+
+		-- TODO move run time to different event handler
+		--local runTime = GetBattlefieldInstanceRunTime() 
 		--WSGPremade:Print(format('bg active: activeDuration=%i', runTime))
-		playerBGTimes[bgData.bgid].activeDuration = runTime
+		--playerBGTimes[bgData.bgid].activeDuration = runTime
 	end
 	prevBGData[bgData.bgid] = bgData
 end
@@ -114,12 +117,13 @@ function WSGPremade:startQueue(bgData)
 	-- track the durations that a queue is paused
 	-- track the duration for an active BG
 	playerBGTimes[bgData.bgid] = {
-		startTime = GetServerTime() - bgData.waitTime,
-		waitDuration = bgData.waitTime,
+		startTime = GetServerTime() - (bgData.waitTime/1000),
+		confirmStartTime = 0,
 		initialEst = bgData.estTime,
 		finalEst = bgData.estTime,
 		currentPause = nil,
 		queuePauses = {},
+		activeStartTime = 0,
 		activeDuration = 0
 	}
 	self.db.factionrealm.currentQueueTimes[bgData.bgid] = playerBGTimes[bgData.bgid]
@@ -244,8 +248,14 @@ local options = {
 			name = 'Show WSGPremade',
 			desc = 'Show WSGPremade',
 			func = function() WSGPremadeGUI:Toggle() end
+		},
+		purge = {
+			type = 'execute',
+			name = 'Purge Queue History',
+			desc = 'Delete all historical queue data',
+			func = function() WSGPremade.db.factionrealm.queueHistory = {} end
 		}
-	}
+	},
 }
 LibStub("AceConfig-3.0"):RegisterOptionsTable("WSGPremade", options, {"WSGPremade", "wsg"})
 

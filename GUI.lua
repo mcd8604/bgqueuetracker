@@ -70,7 +70,7 @@ function GUI:PrepareGUI()
 	--mainFrame:AddChild(button)
 
 	tabGroup = AceGUI:Create("TabGroup")
-	tabGroup:SetTabs({{text="Group", value="group"}, {text="Friends", value="friends"}})
+	tabGroup:SetTabs({{text="Group", value="group"}, {text="Friends", value="friends"}, {text="History", value="history"}})
 	tabGroup:SetLayout("Flow")
 	tabGroup:SetCallback("OnGroupSelected", function (c, e, g) GUI:DrawScrollFrame(c, e, g) end)
 	tabGroup:SetStatusTable({})
@@ -93,10 +93,12 @@ function GUI:DrawScrollFrame(container, event, group)
 		container:AddChild(tableHeader)
 		container:AddChild(scroll)
 		GUI:DrawGroups(scroll)
-	elseif currentTab == "friends" then
+	elseif group == "friends" then
 		--for name, player in pairs(playerTable) do
 		--	GUI:DrawPlayerLabels(name, player, group, scroll)
 		--end
+	elseif group == "history" then
+		GUI:DrawHistory(container, scroll)
 	end
 end
 
@@ -184,8 +186,9 @@ function GUI:setTimeTooltip(widget, data)
 	widget:SetCallback("OnEnter", function (widget, event) 
 		GameTooltip:SetOwner(mainFrame.frame, "ANCHOR_CURSOR");
 		GameTooltip:SetText("Queue Details", 1, 1, 1, 1, 1)
-		--GameTooltip:AddDoubleLine("Start Time:", date("%H:%M:%S", data.startTime), 1,1,1, 1,1,1)
-		GameTooltip:AddDoubleLine("Time Waited:", formatShortTime(data.waitDuration), 1,1,1, 1,1,1)
+		GameTooltip:AddDoubleLine("Start Time:", date("%x %X", data.startTime), 1,1,1, 1,1,1)
+		local waitDuration = ((data.confirmTime or GetServerTime()) - (data.startTime or 0)) * 1000 -- milliseconds
+		GameTooltip:AddDoubleLine("Time Waited:", formatShortTime(waitDuration), 1,1,1, 1,1,1)
 		GameTooltip:AddDoubleLine("Initial Estimate:", formatShortTime(data.initialEst), 1,1,1, 1,1,1)
 		GameTooltip:AddDoubleLine("Current Estimate:", formatShortTime(data.finalEst), 1,1,1, 1,1,1)
 		if(data.queuePauses) then
@@ -208,7 +211,7 @@ function GUI:setTimeTooltip(widget, data)
 			GameTooltip:AddDoubleLine("Total Time Paused:", formatShortTime(totalPauseDuration), 1,1,1, 1,1,1)
 			local adjustedEst = data.finalEst + totalPauseDuration
 			--GameTooltip:AddDoubleLine("Adjusted Estimate:", formatShortTime(adjustedEst), 1,1,1, 0.5,0.5,1)
-			local remaining = adjustedEst - data.waitDuration
+			local remaining = adjustedEst - waitDuration
 			local r,g,b = 0.5,1,0.5
 			local isNegative = remaining < 0
 			local remainingPrefix = ''
@@ -428,4 +431,69 @@ function getBGText(elapsed, bgData, prependMap)
 		end
 	end
 	return text
+end
+
+function GUI:DrawHistory(container, scroll)
+	local tableHeader = GUI:CreateHistoryTableHeader()
+	container:AddChild(tableHeader)
+	container:AddChild(scroll)	
+	for i, queue in ipairs(WSGPremade.db.factionrealm.queueHistory) do
+		scroll:AddChild(GUI:CreateHistoryRow(queue))
+	end	
+end
+
+function GUI:CreateHistoryTableHeader()
+	local tableHeader = AceGUI:Create("SimpleGroup")
+	tableHeader:SetFullWidth(true)
+	tableHeader:SetLayout("Flow")
+
+	local btn = AceGUI:Create("Label")
+	btn:SetWidth(80)
+	btn:SetText("Queue Start")
+	tableHeader:AddChild(btn)
+
+	btn = AceGUI:Create("Label")
+	btn:SetWidth(80)
+	btn:SetText("Initial Estimate")
+	tableHeader:AddChild(btn)
+
+	btn = AceGUI:Create("Label")
+	btn:SetWidth(80)
+	btn:SetText("Final Estimate")
+	tableHeader:AddChild(btn)
+
+	btn = AceGUI:Create("Label")
+	btn:SetWidth(80)
+	btn:SetText("Actual Wait Time")
+	tableHeader:AddChild(btn)
+	
+	return tableHeader
+end
+
+function GUI:CreateHistoryRow(queue)
+	local row = AceGUI:Create("SimpleGroup")
+	row:SetFullWidth(true)
+	row:SetLayout("Flow")
+
+	local btn = AceGUI:Create("InteractiveLabel")
+	btn:SetWidth(80)
+	btn:SetText(formatShortTime(queue.startTime or 0))
+	row:AddChild(btn)
+
+	btn = AceGUI:Create("InteractiveLabel")
+	btn:SetWidth(80)
+	btn:SetText(formatShortTime(queue.initialEst or 0))
+	row:AddChild(btn)
+
+	btn = AceGUI:Create("InteractiveLabel")
+	btn:SetWidth(80)
+	btn:SetText(formatShortTime(queue.finalEst or 0))
+	row:AddChild(btn)
+
+	btn = AceGUI:Create("InteractiveLabel")
+	btn:SetWidth(80)
+	btn:SetText(formatShortTime((queue.confirmTime or 0) - (queue.startTime or 0)))
+	row:AddChild(btn)
+	
+	return row
 end
