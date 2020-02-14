@@ -81,13 +81,11 @@ function WSGPremade:GetBGStatus(bgid)
 end
 
 function WSGPremade:UpdatePlayerBGTimes(bgData)
+	local t = GetServerTime()
 	--WSGPremade:Print(format('%s status=%s (%i)', bgData.map or '', bgData.status or '', bgData.waitTime))
 	if playerBGTimes[bgData.bgid] == nil then
 		--WSGPremade:Print("starting queue")
 		WSGPremade:startQueue(bgData)
-	end
-	if(bgData.estTime > 0) then
-		playerBGTimes[bgData.bgid].finalEst = bgData.estTime
 	end
 	if(bgData.status == "none") then
 		-- queue ended
@@ -95,13 +93,18 @@ function WSGPremade:UpdatePlayerBGTimes(bgData)
 		table.insert(self.db.factionrealm.queueHistory[bgData.bgid], playerBGTimes[bgData.bgid])
 		playerBGTimes[bgData.bgid] = nil
 	elseif(bgData.status == "queued") then
+		if(bgData.estTime > 0) then
+			playerBGTimes[bgData.bgid].finalEst = bgData.estTime
+		end
+		playerBGTimes[bgData.bgid].waitSeconds = t - playerBGTimes[bgData.bgid].startTime
 		WSGPremade:checkPause(bgData)
 	elseif(bgData.status == "confirm") then
-		playerBGTimes[bgData.bgid].confirmStartTime = GetServerTime()
+		playerBGTimes[bgData.bgid].confirmStartTime = t
+		playerBGTimes[bgData.bgid].waitSeconds = t - playerBGTimes[bgData.bgid].startTime
 		--WSGPremade:Print("confirm queue")
 	elseif(bgData.status == "active") then
 		--WSGPremade:Print("active queue")
-		playerBGTimes[bgData.bgid].activeStartTime = GetServerTime()
+		playerBGTimes[bgData.bgid].activeStartTime = t
 
 		-- TODO move run time to different event handler
 		--local runTime = GetBattlefieldInstanceRunTime() 
@@ -116,8 +119,10 @@ function WSGPremade:startQueue(bgData)
 	-- track the duration in queue (wait time)
 	-- track the durations that a queue is paused
 	-- track the duration for an active BG
+	local s = bgData.waitTime/1000
 	playerBGTimes[bgData.bgid] = {
-		startTime = GetServerTime() - (bgData.waitTime/1000),
+		startTime = GetServerTime() - s,
+		waitSeconds = s,
 		confirmStartTime = 0,
 		initialEst = bgData.estTime,
 		finalEst = bgData.estTime,
@@ -253,7 +258,7 @@ local options = {
 			type = 'execute',
 			name = 'Purge Queue History',
 			desc = 'Delete all historical queue data',
-			func = function() WSGPremade.db.factionrealm.queueHistory = {} end
+			func = function() WSGPremade.db.factionrealm.queueHistory = { {}, {} } end
 		}
 	},
 }

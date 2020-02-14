@@ -70,7 +70,7 @@ function GUI:PrepareGUI()
 	--mainFrame:AddChild(button)
 
 	tabGroup = AceGUI:Create("TabGroup")
-	tabGroup:SetTabs({{text="Group", value="group"}, {text="Friends", value="friends"}, {text="History", value="history"}})
+	tabGroup:SetTabs({{text="Group", value="group"}, {text="Friends", value="friends"}, {text="AV History", value=1}, {text="WSG History", value=2}})
 	tabGroup:SetLayout("Flow")
 	tabGroup:SetCallback("OnGroupSelected", function (c, e, g) GUI:DrawScrollFrame(c, e, g) end)
 	tabGroup:SetStatusTable({})
@@ -86,6 +86,7 @@ function GUI:DrawScrollFrame(container, event, group)
 	scroll:SetFullWidth(true)
 	scroll:SetFullHeight(true)
 	if group == "group" then
+		mainFrame:SetWidth(420)
 		--treeView = AceGUI:Create("TreeGroup")
 		--treeView:SetTree(tree)
 		--container:AddChild(treeView)
@@ -94,11 +95,13 @@ function GUI:DrawScrollFrame(container, event, group)
 		container:AddChild(scroll)
 		GUI:DrawGroups(scroll)
 	elseif group == "friends" then
+		mainFrame:SetWidth(420)
 		--for name, player in pairs(playerTable) do
 		--	GUI:DrawPlayerLabels(name, player, group, scroll)
 		--end
-	elseif group == "history" then
-		GUI:DrawHistory(container, scroll)
+	elseif group == 1 or group == 2 then
+		GUI:DrawHistory(group, container, scroll)
+		mainFrame:SetWidth(600)
 	end
 end
 
@@ -161,22 +164,22 @@ function GUI:CreatePlayerRow(name, player)
 	if(player) then
 		av = player.bgs[1]
 		wsg = player.bgs[2]
+		btn = AceGUI:Create("InteractiveLabel")
+		btn:SetWidth(120)
 		if(av) then 
-			btn = AceGUI:Create("InteractiveLabel")
-			btn:SetWidth(120)
 			btn:SetText(getBGText(player.elapsed, av, false))
-			btn.highlight:SetColorTexture(0.3, 0.3, 0.3, 0.5)
 			GUI:setTimeTooltip(btn, player.timeData[1])
-			row:AddChild(btn)
 		end
+		btn.highlight:SetColorTexture(0.3, 0.3, 0.3, 0.5)
+		row:AddChild(btn)
+		btn = AceGUI:Create("InteractiveLabel")
+		btn:SetWidth(120)
 		if(wsg) then
-			btn = AceGUI:Create("InteractiveLabel")
-			btn:SetWidth(120)
 			btn:SetText(getBGText(player.elapsed, wsg, false))
-			btn.highlight:SetColorTexture(0.3, 0.3, 0.3, 0.5)
 			GUI:setTimeTooltip(btn, player.timeData[2])
-			row:AddChild(btn)
 		end
+		btn.highlight:SetColorTexture(0.3, 0.3, 0.3, 0.5)
+		row:AddChild(btn)
 	end
 	
 	return row
@@ -187,7 +190,7 @@ function GUI:setTimeTooltip(widget, data)
 		GameTooltip:SetOwner(mainFrame.frame, "ANCHOR_CURSOR");
 		GameTooltip:SetText("Queue Details", 1, 1, 1, 1, 1)
 		GameTooltip:AddDoubleLine("Start Time:", date("%x %X", data.startTime), 1,1,1, 1,1,1)
-		local waitDuration = ((data.confirmTime or GetServerTime()) - (data.startTime or 0)) * 1000 -- milliseconds
+		local waitDuration = data.waitSeconds * 1000
 		GameTooltip:AddDoubleLine("Time Waited:", formatShortTime(waitDuration), 1,1,1, 1,1,1)
 		GameTooltip:AddDoubleLine("Initial Estimate:", formatShortTime(data.initialEst), 1,1,1, 1,1,1)
 		GameTooltip:AddDoubleLine("Current Estimate:", formatShortTime(data.finalEst), 1,1,1, 1,1,1)
@@ -211,16 +214,20 @@ function GUI:setTimeTooltip(widget, data)
 			GameTooltip:AddDoubleLine("Total Time Paused:", formatShortTime(totalPauseDuration), 1,1,1, 1,1,1)
 			local adjustedEst = data.finalEst + totalPauseDuration
 			--GameTooltip:AddDoubleLine("Adjusted Estimate:", formatShortTime(adjustedEst), 1,1,1, 0.5,0.5,1)
-			local remaining = adjustedEst - waitDuration
-			local r,g,b = 0.5,1,0.5
-			local isNegative = remaining < 0
-			local remainingPrefix = ''
-			if isNegative then
-				r,g,b = 1,0.5,0.5
-				remainingPrefix = '-'
-			end			
-			GameTooltip:AddDoubleLine("Remaining Time:", remainingPrefix..formatShortTime(math.abs(remaining)), 1,1,1, r,g,b)
-			--GameTooltip:AddDoubleLine("Queue Pops At:", date("%H:%M:%S", GetServerTime() + remaining), 1,1,1, 0.5,0.5,1)
+			if(data.confirmStartTime > 0) then
+				GameTooltip:AddDoubleLine("Pop Time:", date("%X", data.confirmStartTime), 1,1,1, 1,1,1)
+			else
+				local remaining = adjustedEst - waitDuration
+				r,g,b = 0.5,1,0.5
+				local isNegative = remaining < 0
+				local remainingPrefix = ''
+				if isNegative then
+					r,g,b = 1,0.5,0.5
+					remainingPrefix = '-'
+				end
+				GameTooltip:AddDoubleLine("Remaining Time:", remainingPrefix..formatShortTime(math.abs(remaining)), 1,1,1, r,g,b)
+				GameTooltip:AddDoubleLine("Expected Pop:", date("%X", GetServerTime() + (remaining/1000)), 1,1,1, 0.5,0.5,1)
+			end
 		end
 		GameTooltip:Show()
 	end)
@@ -433,11 +440,11 @@ function getBGText(elapsed, bgData, prependMap)
 	return text
 end
 
-function GUI:DrawHistory(container, scroll)
+function GUI:DrawHistory(bgid, container, scroll)
 	local tableHeader = GUI:CreateHistoryTableHeader()
 	container:AddChild(tableHeader)
 	container:AddChild(scroll)	
-	for i, queue in ipairs(WSGPremade.db.factionrealm.queueHistory) do
+	for i, queue in ipairs(WSGPremade.db.factionrealm.queueHistory[bgid]) do
 		scroll:AddChild(GUI:CreateHistoryRow(queue))
 	end	
 end
@@ -448,23 +455,23 @@ function GUI:CreateHistoryTableHeader()
 	tableHeader:SetLayout("Flow")
 
 	local btn = AceGUI:Create("Label")
-	btn:SetWidth(80)
+	btn:SetWidth(120)
 	btn:SetText("Queue Start")
 	tableHeader:AddChild(btn)
 
 	btn = AceGUI:Create("Label")
-	btn:SetWidth(80)
+	btn:SetWidth(90)
 	btn:SetText("Initial Estimate")
 	tableHeader:AddChild(btn)
 
 	btn = AceGUI:Create("Label")
-	btn:SetWidth(80)
+	btn:SetWidth(90)
 	btn:SetText("Final Estimate")
 	tableHeader:AddChild(btn)
 
 	btn = AceGUI:Create("Label")
-	btn:SetWidth(80)
-	btn:SetText("Actual Wait Time")
+	btn:SetWidth(90)
+	btn:SetText("Wait Time")
 	tableHeader:AddChild(btn)
 	
 	return tableHeader
@@ -476,23 +483,23 @@ function GUI:CreateHistoryRow(queue)
 	row:SetLayout("Flow")
 
 	local btn = AceGUI:Create("InteractiveLabel")
-	btn:SetWidth(80)
-	btn:SetText(formatShortTime(queue.startTime or 0))
+	btn:SetWidth(120)
+	btn:SetText(date("%x %X", queue.startTime or 0))
 	row:AddChild(btn)
 
 	btn = AceGUI:Create("InteractiveLabel")
-	btn:SetWidth(80)
+	btn:SetWidth(90)
 	btn:SetText(formatShortTime(queue.initialEst or 0))
 	row:AddChild(btn)
 
 	btn = AceGUI:Create("InteractiveLabel")
-	btn:SetWidth(80)
+	btn:SetWidth(90)
 	btn:SetText(formatShortTime(queue.finalEst or 0))
 	row:AddChild(btn)
 
 	btn = AceGUI:Create("InteractiveLabel")
-	btn:SetWidth(80)
-	btn:SetText(formatShortTime((queue.confirmTime or 0) - (queue.startTime or 0)))
+	btn:SetWidth(90)
+	btn:SetText(formatShortTime(queue.waitSeconds * 1000))
 	row:AddChild(btn)
 	
 	return row
