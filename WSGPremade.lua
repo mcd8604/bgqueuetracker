@@ -11,7 +11,7 @@ local groups = {}
 function WSGPremade:OnInitialize()
 	self.db = LibStub("AceDB-3.0"):New("WSGPremadeDB", {
 		factionrealm = {
-			queueHistory = { {}, {} },
+			queueHistory = { {}, {}, {} },
 			currentQueueTimes = {}
 		}
 	}, true)
@@ -26,17 +26,21 @@ end
 
 function WSGPremade:OnEnable()
 	self:RegisterEvent("UPDATE_BATTLEFIELD_STATUS")
+	self:RegisterEvent("GROUP_ROSTER_UPDATE")
 	--self:RegisterEvent("FRIENDLIST_UPDATE");
-	ChatFrame_AddMessageEventFilter("CHAT_MSG_SYSTEM", function(frame, event, message, ...)
-		return message:match("No player named") ~= nil
-	end)
+	--ChatFrame_AddMessageEventFilter("CHAT_MSG_SYSTEM", function(frame, event, message, ...)
+	--	return message:match("No player named") ~= nil
+	--end)
 end
 
 function WSGPremade:Reload()
 end
 
+function WSGPremade:GROUP_ROSTER_UPDATE(event)
+end
+
 function WSGPremade:UPDATE_BATTLEFIELD_STATUS(event, bgid)
-	if(bgid == 1 or bgid == 2) then
+	if(bgid == 1 or bgid == 2 or bgid == 3) then
 		WSGPremade:CheckBGStatus(bgid)
 	end
 end
@@ -53,8 +57,8 @@ function WSGPremade:CheckBGStatus(bgid)
 	local bgData = WSGPremade:GetBGStatus(bgid)		
 	WSGPremade:UpdatePlayerBGTimes(bgData)
 	WSGPremadeGUI:SetPlayerData(playerName, bgData, playerBGTimes)
-	local serializedData = WSGPremade:Serialize(bgData, playerBGTimes)
-	WSGPremade:broadcastToGroup(serializedData)
+	--local serializedData = WSGPremade:Serialize(bgData, playerBGTimes)
+	--WSGPremade:broadcastToGroup(serializedData)
 	--WSGPremade:broadcastToFriends(serializedData)
 	--nextBroadcastData = bgData
 	--C_FriendList.ShowFriends()
@@ -167,17 +171,22 @@ end
 
 function WSGPremade:GetGroupData()
 	groupData = {}
-	for i = 1, GetNumGroupMembers() do
-		name, rank, subgroup, level, class, fileName, zone, online, isDead, role, isML, combatRole = GetRaidRosterInfo(i);
-		if name then
-			_, realm = UnitName(name)
-			-- realm is nil if they're from the same realm
-			if realm == nil or realm == '' then
-				groupData[name] = {
-					class = class,
-					isLead = rank == 2,
-					zone = zone
-				}
+	numGroupMembers = GetNumGroupMembers()
+	if numGroupMembers == 0 then 
+		groupData[playerName] = {}
+	else
+		for i = 1, GetNumGroupMembers() do
+			name, rank, subgroup, level, class, fileName, zone, online, isDead, role, isML, combatRole = GetRaidRosterInfo(i);
+			if name then
+				_, realm = UnitName(name)
+				-- realm is nil if they're from the same realm
+				if realm == nil or realm == '' then
+					groupData[name] = {
+						class = class,
+						isLead = rank == 2,
+						zone = zone
+					}
+				end
 			end
 		end
 	end
@@ -258,7 +267,7 @@ local options = {
 			type = 'execute',
 			name = 'Purge Queue History',
 			desc = 'Delete all historical queue data',
-			func = function() WSGPremade.db.factionrealm.queueHistory = { {}, {} } end
+			func = function() WSGPremade.db.factionrealm.queueHistory = { {}, {}, {} } end
 		}
 	},
 }

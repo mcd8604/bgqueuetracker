@@ -41,7 +41,7 @@ function GUI:PrepareGUI()
 	_G["WSGPremadeGUI_MainFrame"] = mainFrame
 	tinsert(UISpecialFrames, "WSGPremadeGUI_MainFrame")	-- allow ESC close
 	mainFrame:SetTitle("WSG Premade")
-	mainFrame:SetWidth(420)
+	mainFrame:SetWidth(600)
 	mainFrame:SetLayout("Fill")
 	mainFrame:EnableResize(true)
 	--mainFrame.TimeSinceLastUpdate = 0
@@ -70,7 +70,13 @@ function GUI:PrepareGUI()
 	--mainFrame:AddChild(button)
 
 	tabGroup = AceGUI:Create("TabGroup")
-	tabGroup:SetTabs({{text="Group", value="group"}, {text="Friends", value="friends"}, {text="AV History", value=1}, {text="WSG History", value=2}})
+	tabGroup:SetTabs({
+		{text="Group", value="group"}, 
+		--{text="Friends", value="friends"}, 
+		{text="AV History", value=1}, 
+		{text="WSG History", value=2}, 
+		{text="AB History", value=3}
+	})
 	tabGroup:SetLayout("Flow")
 	tabGroup:SetCallback("OnGroupSelected", function (c, e, g) GUI:DrawScrollFrame(c, e, g) end)
 	tabGroup:SetStatusTable({})
@@ -86,7 +92,7 @@ function GUI:DrawScrollFrame(container, event, group)
 	scroll:SetFullWidth(true)
 	scroll:SetFullHeight(true)
 	if group == "group" then
-		mainFrame:SetWidth(420)
+		mainFrame:SetWidth(600)
 		--treeView = AceGUI:Create("TreeGroup")
 		--treeView:SetTree(tree)
 		--container:AddChild(treeView)
@@ -95,11 +101,11 @@ function GUI:DrawScrollFrame(container, event, group)
 		container:AddChild(scroll)
 		GUI:DrawGroups(scroll)
 	elseif group == "friends" then
-		mainFrame:SetWidth(420)
+		mainFrame:SetWidth(600)
 		--for name, player in pairs(playerTable) do
 		--	GUI:DrawPlayerLabels(name, player, group, scroll)
 		--end
-	elseif group == 1 or group == 2 then
+	elseif group == 1 or group == 2 or group == 3 then
 		GUI:DrawHistory(group, container, scroll)
 		mainFrame:SetWidth(600)
 	end
@@ -123,6 +129,11 @@ function GUI:CreateTableHeader()
 	btn = AceGUI:Create("Label")
 	btn:SetWidth(120)
 	btn:SetText("Warsong Gulch")
+	tableHeader:AddChild(btn)
+
+	btn = AceGUI:Create("Label")
+	btn:SetWidth(120)
+	btn:SetText("Arathi Basin")
 	tableHeader:AddChild(btn)
 	
 	return tableHeader
@@ -162,24 +173,17 @@ function GUI:CreatePlayerRow(name, player)
 	row:AddChild(btn)
 	
 	if(player) then
-		av = player.bgs[1]
-		wsg = player.bgs[2]
-		btn = AceGUI:Create("InteractiveLabel")
-		btn:SetWidth(120)
-		if(av) then 
-			btn:SetText(getBGText(player.elapsed, av, false))
-			GUI:setTimeTooltip(btn, player.timeData[1])
+		for i=1,3 do
+			bg = player.bgs[i]
+			btn = AceGUI:Create("InteractiveLabel")
+			btn:SetWidth(120)
+			if(bg) then 
+				btn:SetText(getBGText(player.elapsed, bg, false))
+				GUI:setTimeTooltip(btn, player.timeData[i])
+			end
+			btn.highlight:SetColorTexture(0.3, 0.3, 0.3, 0.5)
+			row:AddChild(btn)
 		end
-		btn.highlight:SetColorTexture(0.3, 0.3, 0.3, 0.5)
-		row:AddChild(btn)
-		btn = AceGUI:Create("InteractiveLabel")
-		btn:SetWidth(120)
-		if(wsg) then
-			btn:SetText(getBGText(player.elapsed, wsg, false))
-			GUI:setTimeTooltip(btn, player.timeData[2])
-		end
-		btn.highlight:SetColorTexture(0.3, 0.3, 0.3, 0.5)
-		row:AddChild(btn)
 	end
 	
 	return row
