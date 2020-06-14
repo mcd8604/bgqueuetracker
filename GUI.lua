@@ -1,5 +1,5 @@
 local GUI = {}
-_G["WSGPremadeGUI"] = GUI
+_G["BGQueueTrackerGUI"] = GUI
 
 local AceGUI = LibStub("AceGUI-3.0")
 
@@ -11,7 +11,7 @@ local groupList = {}
 local tabGroup = nil
 --local tree = {}
 --local treeView = nil
---local WSGPremadeGUI_UpdateInterval = 1.0;
+--local BGQueueTrackerGUI_UpdateInterval = 1.0;
 
 function GUI:Show(skipUpdate, sort_column)
 	mainFrame:Show()
@@ -38,9 +38,9 @@ end
 function GUI:PrepareGUI()
 	mainFrame = AceGUI:Create("Window")
 	mainFrame:Hide()
-	_G["WSGPremadeGUI_MainFrame"] = mainFrame
-	tinsert(UISpecialFrames, "WSGPremadeGUI_MainFrame")	-- allow ESC close
-	mainFrame:SetTitle("WSG Premade")
+	_G["BGQueueTrackerGUI_MainFrame"] = mainFrame
+	tinsert(UISpecialFrames, "BGQueueTrackerGUI_MainFrame")	-- allow ESC close
+	mainFrame:SetTitle("BG Queue Tracker")
 	mainFrame:SetWidth(600)
 	mainFrame:SetLayout("Fill")
 	mainFrame:EnableResize(true)
@@ -48,14 +48,14 @@ function GUI:PrepareGUI()
 	--mainFrame:SetCallback("OnUpdate", function(self, elapsed)
 	--	print('OnUpdate')
 	--	self.TimeSinceLastUpdate = self.TimeSinceLastUpdate + elapsed; 	  
-	--	while (self.TimeSinceLastUpdate > WSGPremadeGUI_UpdateInterval) do
+	--	while (self.TimeSinceLastUpdate > BGQueueTrackerGUI_UpdateInterval) do
 	--		local time = GetTime()
 	--		for name, player in pairs(playerTable) do
 	--			for bgid, label in pairs(player.bgLabels) do
 	--				updateLabel(time, bgid, label)
 	--			end
 	--		end
-	--	  self.TimeSinceLastUpdate = self.TimeSinceLastUpdate - WSGPremadeGUI_UpdateInterval;
+	--	  self.TimeSinceLastUpdate = self.TimeSinceLastUpdate - BGQueueTrackerGUI_UpdateInterval;
 	--	end
 	--end)
 	--mainFrame:SetCallback("OnClose", function(widget) AceGUI:Release(widget) end)
@@ -458,7 +458,7 @@ function GUI:DrawHistory(map, container, scroll)
 	local tableHeader = GUI:CreateHistoryTableHeader()
 	container:AddChild(tableHeader)
 	container:AddChild(scroll)	
-	for i, queue in ipairs(WSGPremade.db.factionrealm.queueHistory[map]) do
+	for i, queue in ipairs(BGQueueTracker.db.factionrealm.queueHistory[map]) do
 		scroll:AddChild(GUI:CreateHistoryRow(queue))
 	end	
 end

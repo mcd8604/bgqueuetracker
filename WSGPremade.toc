@@ -1,18 +1,18 @@
 ## Interface: 11303
-## Title: WSGPremade
+## Title: BGQueueTracker
 
-## Notes: Tool for forming WSG premade groups
+## Notes: Tool for tracking battleground queues
 
 ## Author: maurtybrave
 ## OptionalDeps: Ace3
 ## Version: 0
 
 ## X-Category: Battlegrounds/PvP
-## SavedVariables: WSGPremadeDB
+## SavedVariables: BGQueueTrackerDB
 
 ## X-Curse-Project-ID: 
 
 Libs\embeds.xml
 
-WSGPremade.lua
+BGQueueTracker.lua
 GUI.lua
