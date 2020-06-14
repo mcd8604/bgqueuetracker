@@ -90,7 +90,7 @@ end
 
 function WSGPremade:UpdatePlayerBGTimes(bgid, bgData)
 	local t = GetServerTime()
-	WSGPremade:Print(format('%s status=%s (%i)', bgData.map or '', bgData.status or '', bgData.waitTime))
+	--WSGPremade:Print(format('%s status=%s (%i)', bgData.map or '', bgData.status or '', bgData.waitTime))
 	if(bgData.status == "none") then
 		-- queue ended
 		if bgData.map then
@@ -98,16 +98,14 @@ function WSGPremade:UpdatePlayerBGTimes(bgid, bgData)
 			table.insert(self.db.factionrealm.queueHistory[bgData.map], playerBGTimes[bgData.map])
 			playerBGTimes[bgData.map] = nil
 			idMap[bgid] = nil
-		else
-			WSGPremade.Print(format('queue ended but %i is not mapped', bgid))
+		--else
+		--	WSGPremade.Print(format('queue ended but %i is not mapped', bgid))
 		end
 	elseif(bgData.status == "queued") then
 		if idMap[bgid] == nil then
 			WSGPremade:Print("starting queue")
 			WSGPremade:startQueue(bgData)
 			idMap[bgid] = bgData.map
-		else
-			WSGPremade.Print(format('%i is already mapped', bgid))
 		end
 		if(bgData.estTime > 0) then
 			playerBGTimes[bgData.map].finalEst = bgData.estTime
