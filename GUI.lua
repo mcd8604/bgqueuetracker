@@ -73,9 +73,9 @@ function GUI:PrepareGUI()
 	tabGroup:SetTabs({
 		{text="Group", value="group"}, 
 		--{text="Friends", value="friends"}, 
-		{text="AV History", value=1}, 
-		{text="WSG History", value=2}, 
-		{text="AB History", value=3}
+		{text="WSG History", value="Warsong Gulch"}, 
+		{text="AV History", value="Alterac Valley"}, 
+		{text="AB History", value="Arathi Basin"}
 	})
 	tabGroup:SetLayout("Flow")
 	tabGroup:SetCallback("OnGroupSelected", function (c, e, g) GUI:DrawScrollFrame(c, e, g) end)
@@ -105,7 +105,7 @@ function GUI:DrawScrollFrame(container, event, group)
 		--for name, player in pairs(playerTable) do
 		--	GUI:DrawPlayerLabels(name, player, group, scroll)
 		--end
-	elseif group == 1 or group == 2 or group == 3 then
+	elseif group == "Warsong Gulch" or group == "Alterac Valley" or group == "Arathi Basin" then
 		GUI:DrawHistory(group, container, scroll)
 		mainFrame:SetWidth(600)
 	end
@@ -123,12 +123,12 @@ function GUI:CreateTableHeader()
 
 	btn = AceGUI:Create("Label")
 	btn:SetWidth(120)
-	btn:SetText("Alterac Valley")
+	btn:SetText("Warsong Gulch")
 	tableHeader:AddChild(btn)
 
 	btn = AceGUI:Create("Label")
 	btn:SetWidth(120)
-	btn:SetText("Warsong Gulch")
+	btn:SetText("Alterac Valley")
 	tableHeader:AddChild(btn)
 
 	btn = AceGUI:Create("Label")
@@ -173,13 +173,15 @@ function GUI:CreatePlayerRow(name, player)
 	row:AddChild(btn)
 	
 	if(player) then
-		for i=1,3 do
-			bg = player.bgs[i]
+		for map in pairs(player.bgs) do
+			bg = player.bgs[map]
 			btn = AceGUI:Create("InteractiveLabel")
 			btn:SetWidth(120)
 			if(bg) then 
 				btn:SetText(getBGText(player.elapsed, bg, false))
-				GUI:setTimeTooltip(btn, player.timeData[i])
+				GUI:setTimeTooltip(btn, player.timeData[map])
+			else
+				btn:SetText("")
 			end
 			btn.highlight:SetColorTexture(0.3, 0.3, 0.3, 0.5)
 			row:AddChild(btn)
@@ -190,52 +192,54 @@ function GUI:CreatePlayerRow(name, player)
 end
 
 function GUI:setTimeTooltip(widget, data)
-	widget:SetCallback("OnEnter", function (widget, event) 
-		GameTooltip:SetOwner(mainFrame.frame, "ANCHOR_CURSOR");
-		GameTooltip:SetText("Queue Details", 1, 1, 1, 1, 1)
-		GameTooltip:AddDoubleLine("Start Time:", date("%x %X", data.startTime), 1,1,1, 1,1,1)
-		local waitDuration = data.waitSeconds * 1000
-		GameTooltip:AddDoubleLine("Time Waited:", formatShortTime(waitDuration), 1,1,1, 1,1,1)
-		GameTooltip:AddDoubleLine("Initial Estimate:", formatShortTime(data.initialEst), 1,1,1, 1,1,1)
-		GameTooltip:AddDoubleLine("Current Estimate:", formatShortTime(data.finalEst), 1,1,1, 1,1,1)
-		if(data.queuePauses) then
-			local totalPauseDuration = 0
-			GameTooltip:AddLine(format("Pauses (%i)", #data.queuePauses), 1, 1, 1, 1, 1)
-			for i, p in ipairs(data.queuePauses) do
-				local pauseDuration = p.stop - p.start
-				if(pauseDuration > 0) then
-					totalPauseDuration = totalPauseDuration + pauseDuration
+	if(data) then
+		widget:SetCallback("OnEnter", function (widget, event) 
+			GameTooltip:SetOwner(mainFrame.frame, "ANCHOR_CURSOR");
+			GameTooltip:SetText("Queue Details", 1, 1, 1, 1, 1)
+			GameTooltip:AddDoubleLine("Start Time:", date("%x %X", data.startTime), 1,1,1, 1,1,1)
+			local waitDuration = data.waitSeconds * 1000
+			GameTooltip:AddDoubleLine("Time Waited:", formatShortTime(waitDuration), 1,1,1, 1,1,1)
+			GameTooltip:AddDoubleLine("Initial Estimate:", formatShortTime(data.initialEst), 1,1,1, 1,1,1)
+			GameTooltip:AddDoubleLine("Current Estimate:", formatShortTime(data.finalEst), 1,1,1, 1,1,1)
+			if(data.queuePauses) then
+				local totalPauseDuration = 0
+				GameTooltip:AddLine(format("Pauses (%i)", #data.queuePauses), 1, 1, 1, 1, 1)
+				for i, p in ipairs(data.queuePauses) do
+					local pauseDuration = p.stop - p.start
+					if(pauseDuration > 0) then
+						totalPauseDuration = totalPauseDuration + pauseDuration
+					end
+					GameTooltip:AddLine(
+						format(
+							"(%s)",
+							--"%s to %s (%s)", 
+							--date("%H:%M:%S", data.startTime + p.start), 
+							--date("%H:%M:%S", data.startTime + p.stop), 
+							formatShortTime(pauseDuration)
+						), 1, 1, 1, 1, 1)
 				end
-				GameTooltip:AddLine(
-					format(
-						"(%s)",
-						--"%s to %s (%s)", 
-						--date("%H:%M:%S", data.startTime + p.start), 
-						--date("%H:%M:%S", data.startTime + p.stop), 
-						formatShortTime(pauseDuration)
-					), 1, 1, 1, 1, 1)
-			end
-			GameTooltip:AddDoubleLine("Total Time Paused:", formatShortTime(totalPauseDuration), 1,1,1, 1,1,1)
-			local adjustedEst = data.finalEst + totalPauseDuration
-			--GameTooltip:AddDoubleLine("Adjusted Estimate:", formatShortTime(adjustedEst), 1,1,1, 0.5,0.5,1)
-			if(data.confirmStartTime > 0) then
-				GameTooltip:AddDoubleLine("Pop Time:", date("%X", data.confirmStartTime), 1,1,1, 1,1,1)
-			else
-				local remaining = adjustedEst - waitDuration
-				r,g,b = 0.5,1,0.5
-				local isNegative = remaining < 0
-				local remainingPrefix = ''
-				if isNegative then
-					r,g,b = 1,0.5,0.5
-					remainingPrefix = '-'
+				GameTooltip:AddDoubleLine("Total Time Paused:", formatShortTime(totalPauseDuration), 1,1,1, 1,1,1)
+				local adjustedEst = data.finalEst + totalPauseDuration
+				--GameTooltip:AddDoubleLine("Adjusted Estimate:", formatShortTime(adjustedEst), 1,1,1, 0.5,0.5,1)
+				if(data.confirmStartTime > 0) then
+					GameTooltip:AddDoubleLine("Pop Time:", date("%X", data.confirmStartTime), 1,1,1, 1,1,1)
+				else
+					local remaining = adjustedEst - waitDuration
+					r,g,b = 0.5,1,0.5
+					local isNegative = remaining < 0
+					local remainingPrefix = ''
+					if isNegative then
+						r,g,b = 1,0.5,0.5
+						remainingPrefix = '-'
+					end
+					GameTooltip:AddDoubleLine("Remaining Time:", remainingPrefix..formatShortTime(math.abs(remaining)), 1,1,1, r,g,b)
+					GameTooltip:AddDoubleLine("Expected Pop:", date("%X", GetServerTime() + (remaining/1000)), 1,1,1, 0.5,0.5,1)
 				end
-				GameTooltip:AddDoubleLine("Remaining Time:", remainingPrefix..formatShortTime(math.abs(remaining)), 1,1,1, r,g,b)
-				GameTooltip:AddDoubleLine("Expected Pop:", date("%X", GetServerTime() + (remaining/1000)), 1,1,1, 0.5,0.5,1)
 			end
-		end
-		GameTooltip:Show()
-	end)
-	widget:SetCallback("OnLeave", function (widget, event) GameTooltip:Hide() end)
+			GameTooltip:Show()
+		end)
+		widget:SetCallback("OnLeave", function (widget, event) GameTooltip:Hide() end)
+	end
 end
 
 --function GUI:DrawPlayerLabel(name, player, currentTab, parentContainer)
@@ -259,21 +263,27 @@ function GUI:SetPlayerData(playerName, bgData, bgTimes)
 	player = playerTable[playerName]
 	if player then
 		--table.insert(player.bgs, bgData.bgid, bgData)
-		player.bgs[bgData.bgid] = bgData
+		if bgData.map then
+			player.bgs[bgData.map] = bgData
+		end
 		player.lastUpdate = GetTime()
 		player.elapsed = 0
 		player.timeData = bgTimes
 	else
 		player = {
 			name = playerName,
-			bgs = {},
+			bgs = { 
+				["Warsong Gulch"]	= {},
+				["Alterac Valley"]	= {},
+				["Arathi Basin"]	= {} 
+			},
 			display = {},
 			bgLabels = {},
 			timeData = {},
 			lastUpdate = GetTime(),
 			elapsed = 0
 		}
-		player.bgs[bgData.bgid] = bgData
+		player.bgs[bgData.map] = bgData
 		playerTable[playerName] = player
 	end
 	GUI:AddGroup(bgData.groupData)
@@ -367,17 +377,17 @@ function GUI:CreatePlayerDisplay(player)
 	playerLabel:SetRelativeWidth(1)
 	playerLabel:SetText(player.name)
 	group:AddChild(playerLabel)
-	for bgid, bgData in pairs(player.bgs) do
+	for map, bgData in pairs(player.bgs) do
 		if(bgData ~= nil) then
-			bgLabel = GUI:CreateBGLabel(bgid)
-			player.bgLabels[bgid] = bgLabel 
+			bgLabel = GUI:CreateBGLabel(map)
+			player.bgLabels[map] = bgLabel 
 			group:AddChild(bgLabel)
 		end
 	end
 	return group
 end
 
-function GUI:CreateBGLabel(bgid)
+function GUI:CreateBGLabel(map)
 	local bgLabel = AceGUI:Create("Label")
 	bgLabel:SetRelativeWidth(1)
 	return bgLabel
@@ -408,8 +418,8 @@ end
 function updatePlayerDisplay(player)
 	if player then
 		updatePlayerTime(player)
-		for bgid, bgData in pairs(player.bgs) do
-			player.bgLabels[bgid]:SetText(getBGText(player.elapsed, bgData, true))
+		for map, bgData in pairs(player.bgs) do
+			player.bgLabels[map]:SetText(getBGText(player.elapsed, bgData, true))
 		end
 		-- Do a quick recheck incase the text got bigger in the update without something being removed/added
 		--if( longestText < (self.text:GetStringWidth() + 10) ) then
@@ -444,11 +454,11 @@ function getBGText(elapsed, bgData, prependMap)
 	return text
 end
 
-function GUI:DrawHistory(bgid, container, scroll)
+function GUI:DrawHistory(map, container, scroll)
 	local tableHeader = GUI:CreateHistoryTableHeader()
 	container:AddChild(tableHeader)
 	container:AddChild(scroll)	
-	for i, queue in ipairs(WSGPremade.db.factionrealm.queueHistory[bgid]) do
+	for i, queue in ipairs(WSGPremade.db.factionrealm.queueHistory[map]) do
 		scroll:AddChild(GUI:CreateHistoryRow(queue))
 	end	
 end

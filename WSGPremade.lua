@@ -7,11 +7,18 @@ local playerName = UnitName("player");
 local playerBGTimes = {}
 local prevBGData = {}
 local groups = {}
+-- NOTE: bgData.map is always empty when status is none, so bgid needs to be mapped to the
+-- map name on queue start and looked up for queue end
+local idMap = {}
 
 function WSGPremade:OnInitialize()
 	self.db = LibStub("AceDB-3.0"):New("WSGPremadeDB", {
 		factionrealm = {
-			queueHistory = { {}, {}, {} },
+			queueHistory = { 
+				["Warsong Gulch"]	= {},
+				["Alterac Valley"]	= {},
+				["Arathi Basin"]	= {} 
+			},
 			currentQueueTimes = {}
 		}
 	}, true)
@@ -40,9 +47,7 @@ function WSGPremade:GROUP_ROSTER_UPDATE(event)
 end
 
 function WSGPremade:UPDATE_BATTLEFIELD_STATUS(event, bgid)
-	if(bgid == 1 or bgid == 2 or bgid == 3) then
-		WSGPremade:CheckBGStatus(bgid)
-	end
+	WSGPremade:CheckBGStatus(bgid)
 end
 
 --function WSGPremade:FRIENDLIST_UPDATE()
@@ -54,8 +59,8 @@ end
 --end
 
 function WSGPremade:CheckBGStatus(bgid)
-	local bgData = WSGPremade:GetBGStatus(bgid)		
-	WSGPremade:UpdatePlayerBGTimes(bgData)
+	local bgData = WSGPremade:GetBGStatus(bgid)
+	WSGPremade:UpdatePlayerBGTimes(bgid, bgData)
 	WSGPremadeGUI:SetPlayerData(playerName, bgData, playerBGTimes)
 	--local serializedData = WSGPremade:Serialize(bgData, playerBGTimes)
 	--WSGPremade:broadcastToGroup(serializedData)
@@ -67,9 +72,8 @@ end
 function WSGPremade:GetBGStatus(bgid)
 	local status, map, instanceID, isRegistered, suspendedQueue, queueType, gameType, role = GetBattlefieldStatus(bgid)
 	local bgData = {
-		bgid = bgid,
 		status = status,
-		map = map,
+		map = map or idMap[bgid],
 		instanceID = instanceID,
 		isRegistered = isRegistered, 
 		suspendedQueue = suspendedQueue, 
@@ -84,38 +88,48 @@ function WSGPremade:GetBGStatus(bgid)
 	return bgData
 end
 
-function WSGPremade:UpdatePlayerBGTimes(bgData)
+function WSGPremade:UpdatePlayerBGTimes(bgid, bgData)
 	local t = GetServerTime()
-	--WSGPremade:Print(format('%s status=%s (%i)', bgData.map or '', bgData.status or '', bgData.waitTime))
-	if playerBGTimes[bgData.bgid] == nil then
-		--WSGPremade:Print("starting queue")
-		WSGPremade:startQueue(bgData)
-	end
+	WSGPremade:Print(format('%s status=%s (%i)', bgData.map or '', bgData.status or '', bgData.waitTime))
 	if(bgData.status == "none") then
 		-- queue ended
-		--WSGPremade:Print("ending queue")
-		table.insert(self.db.factionrealm.queueHistory[bgData.bgid], playerBGTimes[bgData.bgid])
-		playerBGTimes[bgData.bgid] = nil
-	elseif(bgData.status == "queued") then
-		if(bgData.estTime > 0) then
-			playerBGTimes[bgData.bgid].finalEst = bgData.estTime
+		if bgData.map then
+			WSGPremade:Print(format("ending queue: %s", bgData.map))
+			table.insert(self.db.factionrealm.queueHistory[bgData.map], playerBGTimes[bgData.map])
+			playerBGTimes[bgData.map] = nil
+			idMap[bgid] = nil
+		else
+			WSGPremade.Print(format('queue ended but %i is not mapped', bgid))
 		end
-		playerBGTimes[bgData.bgid].waitSeconds = t - playerBGTimes[bgData.bgid].startTime
+	elseif(bgData.status == "queued") then
+		if idMap[bgid] == nil then
+			WSGPremade:Print("starting queue")
+			WSGPremade:startQueue(bgData)
+			idMap[bgid] = bgData.map
+		else
+			WSGPremade.Print(format('%i is already mapped', bgid))
+		end
+		if(bgData.estTime > 0) then
+			playerBGTimes[bgData.map].finalEst = bgData.estTime
+		end
+		playerBGTimes[bgData.map].waitSeconds = t - playerBGTimes[bgData.map].startTime
 		WSGPremade:checkPause(bgData)
 	elseif(bgData.status == "confirm") then
-		playerBGTimes[bgData.bgid].confirmStartTime = t
-		playerBGTimes[bgData.bgid].waitSeconds = t - playerBGTimes[bgData.bgid].startTime
+		playerBGTimes[bgData.map].confirmStartTime = t
+		playerBGTimes[bgData.map].waitSeconds = t - playerBGTimes[bgData.map].startTime
 		--WSGPremade:Print("confirm queue")
 	elseif(bgData.status == "active") then
 		--WSGPremade:Print("active queue")
-		playerBGTimes[bgData.bgid].activeStartTime = t
+		playerBGTimes[bgData.map].activeStartTime = t
 
 		-- TODO move run time to different event handler
 		--local runTime = GetBattlefieldInstanceRunTime() 
 		--WSGPremade:Print(format('bg active: activeDuration=%i', runTime))
-		--playerBGTimes[bgData.bgid].activeDuration = runTime
+		--playerBGTimes[bgData.map].activeDuration = runTime
 	end
-	prevBGData[bgData.bgid] = bgData
+	if bgData.map then
+		prevBGData[bgData.map] = bgData
+	end
 end
 
 function WSGPremade:startQueue(bgData)
@@ -124,7 +138,7 @@ function WSGPremade:startQueue(bgData)
 	-- track the durations that a queue is paused
 	-- track the duration for an active BG
 	local s = bgData.waitTime/1000
-	playerBGTimes[bgData.bgid] = {
+	playerBGTimes[bgData.map] = {
 		startTime = GetServerTime() - s,
 		waitSeconds = s,
 		confirmStartTime = 0,
@@ -135,13 +149,13 @@ function WSGPremade:startQueue(bgData)
 		activeStartTime = 0,
 		activeDuration = 0
 	}
-	self.db.factionrealm.currentQueueTimes[bgData.bgid] = playerBGTimes[bgData.bgid]
+	self.db.factionrealm.currentQueueTimes[bgData.map] = playerBGTimes[bgData.map]
 end
 
 function WSGPremade:checkPause(bgData)
-	if prevBGData and prevBGData[bgData.bgid] and bgData.waitTime > 2000 then
-		local timeData = playerBGTimes[bgData.bgid]
-		local prev = prevBGData[bgData.bgid]
+	if prevBGData and prevBGData[bgData.map] and bgData.waitTime > 2000 then
+		local timeData = playerBGTimes[bgData.map]
+		local prev = prevBGData[bgData.map]
 		-- new pause starts if prev data has est time > 0 and current data has est == 0
 		if not timeData.currentPause and (prev.estTime and prev.estTime > 0) and (not bgData.estTime or bgData.estTime == 0) then
 			timeData.currentPause = { start = bgData.waitTime, stop = 0 }
@@ -155,14 +169,14 @@ function WSGPremade:checkPause(bgData)
 			--WSGPremade:Print(format('pause end: stop=%i', bgData.waitTime))
 		end
 		--if bgData.estTime == 0 and then
-		--	local numPauses = #(playerBGTimes[bgData.bgid].queuePauses)
-		--	if(numPauses == 0 or playerBGTimes[bgData.bgid].queuePauses[numPauses].stop > 0) then
+		--	local numPauses = #(playerBGTimes[bgData.map].queuePauses)
+		--	if(numPauses == 0 or playerBGTimes[bgData.map].queuePauses[numPauses].stop > 0) then
 		--		-- new pause started
-		--		table.insert(playerBGTimes[bgData.bgid].queuePauses, { start = bgData.waitTime, stop = 0 })
+		--		table.insert(playerBGTimes[bgData.map].queuePauses, { start = bgData.waitTime, stop = 0 })
 		--		WSGPremade:Print(format('new pause: start=%i', bgData.waitTime))
 		--	else
 		--		-- last pause ended
-		--		playerBGTimes[bgData.bgid].queuePauses[#playerBGTimes[bgData.bgid].queuePauses].stop = bgData.waitTime
+		--		playerBGTimes[bgData.map].queuePauses[#playerBGTimes[bgData.map].queuePauses].stop = bgData.waitTime
 		--		WSGPremade:Print(format('pause end: stop=%i', bgData.waitTime))
 		--	end
 		--end
@@ -267,7 +281,13 @@ local options = {
 			type = 'execute',
 			name = 'Purge Queue History',
 			desc = 'Delete all historical queue data',
-			func = function() WSGPremade.db.factionrealm.queueHistory = { {}, {}, {} } end
+			func = function() 
+				WSGPremade.db.factionrealm.queueHistory = { 
+					["Warsong Gulch"]	= {},
+					["Alterac Valley"]	= {},
+					["Arathi Basin"]	= {} 
+				}
+			end
 		}
 	},
 }
