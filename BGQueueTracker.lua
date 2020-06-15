@@ -89,44 +89,42 @@ function BGQueueTracker:GetBGStatus(bgid)
 end
 
 function BGQueueTracker:UpdatePlayerBGTimes(bgid, bgData)
-	local t = GetServerTime()
-	--BGQueueTracker:Print(format('%s status=%s (%i)', bgData.map or '', bgData.status or '', bgData.waitTime))
-	if(bgData.status == "none") then
+	if bgData.map then
+		local t = GetServerTime()
+		--BGQueueTracker:Print(format('%s status=%s (%i)', bgData.map or '', bgData.status or '', bgData.waitTime))
+		if(bgData.status == "none") then
 		-- queue ended
-		if bgData.map then
 			BGQueueTracker:Print(format("ending queue: %s", bgData.map))
 			table.insert(self.db.factionrealm.queueHistory[bgData.map], playerBGTimes[bgData.map])
 			playerBGTimes[bgData.map] = nil
 			idMap[bgid] = nil
-		--else
-		--	BGQueueTracker.Print(format('queue ended but %i is not mapped', bgid))
-		end
-	elseif(bgData.status == "queued") then
-		if idMap[bgid] == nil then
-			BGQueueTracker:Print("starting queue")
-			BGQueueTracker:startQueue(bgData)
-			idMap[bgid] = bgData.map
-		end
-		if(bgData.estTime > 0) then
-			playerBGTimes[bgData.map].finalEst = bgData.estTime
-		end
-		playerBGTimes[bgData.map].waitSeconds = t - playerBGTimes[bgData.map].startTime
-		BGQueueTracker:checkPause(bgData)
-	elseif(bgData.status == "confirm") then
-		playerBGTimes[bgData.map].confirmStartTime = t
-		playerBGTimes[bgData.map].waitSeconds = t - playerBGTimes[bgData.map].startTime
-		--BGQueueTracker:Print("confirm queue")
-	elseif(bgData.status == "active") then
-		--BGQueueTracker:Print("active queue")
-		playerBGTimes[bgData.map].activeStartTime = t
+		elseif(bgData.status == "queued") then
+			if idMap[bgid] == nil then
+				BGQueueTracker:Print("starting queue")
+				BGQueueTracker:startQueue(bgData)
+				idMap[bgid] = bgData.map
+			end
+			if(bgData.estTime > 0) then
+				playerBGTimes[bgData.map].finalEst = bgData.estTime
+			end
+			playerBGTimes[bgData.map].waitSeconds = t - playerBGTimes[bgData.map].startTime
+			BGQueueTracker:checkPause(bgData)
+		elseif(bgData.status == "confirm") then
+			playerBGTimes[bgData.map].confirmStartTime = t
+			playerBGTimes[bgData.map].waitSeconds = t - playerBGTimes[bgData.map].startTime
+			--BGQueueTracker:Print("confirm queue")
+		elseif(bgData.status == "active") then
+			--BGQueueTracker:Print("active queue")
+			playerBGTimes[bgData.map].activeStartTime = t
 
-		-- TODO move run time to different event handler
-		--local runTime = GetBattlefieldInstanceRunTime() 
-		--BGQueueTracker:Print(format('bg active: activeDuration=%i', runTime))
-		--playerBGTimes[bgData.map].activeDuration = runTime
-	end
-	if bgData.map then
+			-- TODO move run time to different event handler
+			--local runTime = GetBattlefieldInstanceRunTime() 
+			--BGQueueTracker:Print(format('bg active: activeDuration=%i', runTime))
+			--playerBGTimes[bgData.map].activeDuration = runTime
+		end
 		prevBGData[bgData.map] = bgData
+	--else
+		--	BGQueueTracker.Print(format('queue ended but %i is not mapped', bgid))
 	end
 end
 
