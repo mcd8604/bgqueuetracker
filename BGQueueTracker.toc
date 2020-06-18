@@ -3,9 +3,9 @@
 
 ## Notes: Tool for tracking battleground queues
 
-## Author: maurtybrave
+## Author: Maurty
 ## OptionalDeps: Ace3
-## Version: 0
+## Version: 0.1
 
 ## X-Category: Battlegrounds/PvP
 ## SavedVariables: BGQueueTrackerDB
