@@ -173,7 +173,7 @@ function GUI:CreatePlayerRow(name, player)
 	row:AddChild(btn)
 	
 	if(player) then
-		for map in pairs(player.bgs) do
+		for i, map in ipairs(BGQueueTracker.MapNames) do
 			bg = player.bgs[map]
 			btn = AceGUI:Create("InteractiveLabel")
 			btn:SetWidth(120)
@@ -259,34 +259,27 @@ end
 --	end
 --end
 
-function GUI:SetPlayerData(playerName, bgData, bgTimes)
+function GUI:SetPlayerData(playerName, bgData, groupData, bgTimes)
 	player = playerTable[playerName]
 	if player then
 		--table.insert(player.bgs, bgData.bgid, bgData)
-		if bgData.map then
-			player.bgs[bgData.map] = bgData
-		end
+		player.bgs = bgData
 		player.lastUpdate = GetTime()
 		player.elapsed = 0
 		player.timeData = bgTimes
 	else
 		player = {
 			name = playerName,
-			bgs = { 
-				["Warsong Gulch"]	= {},
-				["Alterac Valley"]	= {},
-				["Arathi Basin"]	= {} 
-			},
+			bgs = bgData,
 			display = {},
 			bgLabels = {},
 			timeData = {},
 			lastUpdate = GetTime(),
 			elapsed = 0
 		}
-		player.bgs[bgData.map] = bgData
 		playerTable[playerName] = player
 	end
-	GUI:AddGroup(bgData.groupData)
+	GUI:AddGroup(groupData)
 	--GUI:PopulateTree()
 
 	-- Cause re-draw

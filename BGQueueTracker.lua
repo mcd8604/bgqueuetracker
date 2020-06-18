@@ -4,25 +4,25 @@ local addonName = GetAddOnMetadata("BGQueueTracker", "Title");
 local commPrefix = addonName .. "1";
 
 local playerName = UnitName("player");
-local playerBGTimes = {}
+local curBGData = {}
 local prevBGData = {}
 local groups = {}
--- NOTE: bgData.map is always empty when status is none, so bgid needs to be mapped to the
--- map name on queue start and looked up for queue end
-local idMap = {}
 
 function BGQueueTracker:OnInitialize()
+	self.MapNames = {"Warsong Gulch", "Alterac Valley", "Arathi Basin"}
 	self.db = LibStub("AceDB-3.0"):New("BGQueueTrackerDB", {
 		factionrealm = {
 			queueHistory = { 
 				["Warsong Gulch"]	= {},
 				["Alterac Valley"]	= {},
 				["Arathi Basin"]	= {} 
-			},
-			currentQueueTimes = {}
+			}
 		}
 	}, true)
-	playerBGTimes = self.db.factionrealm.currentQueueTimes
+	self.states = {
+		isConfirming = false,
+		isActive = false
+	}
 	--self:RegisterEvent("CHAT_MSG_COMBAT_HONOR_GAIN", CHAT_MSG_COMBAT_HONOR_GAIN_EVENT);
 	self:RegisterComm(commPrefix, "OnCommReceive")
 	self:RegisterEvent("PLAYER_DEAD");
@@ -33,7 +33,10 @@ end
 
 function BGQueueTracker:OnEnable()
 	self:RegisterEvent("UPDATE_BATTLEFIELD_STATUS")
-	self:RegisterEvent("GROUP_ROSTER_UPDATE")
+	self:RegisterEvent("PLAYER_ENTERING_BATTLEGROUND")	
+	--self:RegisterEvent("UPDATE_ACTIVE_BATTLEFIELD")	
+	--self:RegisterEvent("BATTLEFIELD_QUEUE_TIMEOUT")	
+	--self:RegisterEvent("GROUP_ROSTER_UPDATE")
 	--self:RegisterEvent("FRIENDLIST_UPDATE");
 	--ChatFrame_AddMessageEventFilter("CHAT_MSG_SYSTEM", function(frame, event, message, ...)
 	--	return message:match("No player named") ~= nil
@@ -46,10 +49,6 @@ end
 function BGQueueTracker:GROUP_ROSTER_UPDATE(event)
 end
 
-function BGQueueTracker:UPDATE_BATTLEFIELD_STATUS(event, bgid)
-	BGQueueTracker:CheckBGStatus(bgid)
-end
-
 --function BGQueueTracker:FRIENDLIST_UPDATE()
 --	if(nextBroadcastData ~= nil) then
 --		local serializedData = BGQueueTracker:Serialize(nextBroadcastData)
@@ -58,83 +57,150 @@ end
 --	end
 --end
 
-function BGQueueTracker:CheckBGStatus(bgid)
-	local bgData = BGQueueTracker:GetBGStatus(bgid)
-	BGQueueTracker:UpdatePlayerBGTimes(bgid, bgData)
-	BGQueueTrackerGUI:SetPlayerData(playerName, bgData, playerBGTimes)
-	--local serializedData = BGQueueTracker:Serialize(bgData, playerBGTimes)
-	--BGQueueTracker:broadcastToGroup(serializedData)
-	--BGQueueTracker:broadcastToFriends(serializedData)
-	--nextBroadcastData = bgData
-	--C_FriendList.ShowFriends()
+function BGQueueTracker:UPDATE_BATTLEFIELD_STATUS(event, battleFieldIndex)
+	-- ignore the first status update when entering a BG, because it will be a 'none' status and cause the queues to end prematurely
+	--if isEnteringBG then
+	--	if GetBattlefieldInstanceRunTime() > 0 then
+	--		BGQueueTracker:Print("finished entering")
+	--		isEnteringBG = false
+	--	else
+	--		BGQueueTracker:Print("still entering")
+	--	end
+	--else
+		--BGQueueTracker:Print("UPDATE_BATTLEFIELD_STATUS")
+		local instance, instanceType = IsInInstance();
+		self.states.isActive = instance and instanceType == "pvp"
+
+		prevBGData = curBGData
+		curBGData = {}
+		--GetMaxBattlefieldId()=3
+		for i=1,3 do
+			bgData = BGQueueTracker:GetBGStatus(i)
+			if bgData.map then
+				curBGData[bgData.map] = bgData
+			end
+		end
+		curTimeData = BGQueueTracker:UpdatePlayerBGTimes()
+		groupData = BGQueueTracker:GetGroupData()
+		BGQueueTrackerGUI:SetPlayerData(playerName, curBGData, groupData, curTimeData)
+		
+		--local serializedData = BGQueueTracker:Serialize(bgData, self.db.factionrealm.currentQueueTimes)
+		--BGQueueTracker:broadcastToGroup(serializedData)
+		--BGQueueTracker:broadcastToFriends(serializedData)
+		--nextBroadcastData = bgData
+		--C_FriendList.ShowFriends()
+	--end
 end
 
-function BGQueueTracker:GetBGStatus(bgid)
-	local status, map, instanceID, isRegistered, suspendedQueue, queueType, gameType, role = GetBattlefieldStatus(bgid)
+function BGQueueTracker:PLAYER_ENTERING_BATTLEGROUND(event)
+	BGQueueTracker:Print("PLAYER_ENTERING_BATTLEGROUND")
+	self.states.isConfirming = false
+	self.states.isActive = true
+end
+
+function BGQueueTracker:UPDATE_ACTIVE_BATTLEFIELD(event)
+	BGQueueTracker:Print("UPDATE_ACTIVE_BATTLEFIELD")
+end
+
+function BGQueueTracker:BATTLEFIELD_QUEUE_TIMEOUT(event)
+	BGQueueTracker:Print("BATTLEFIELD_QUEUE_TIMEOUT")
+end
+
+function BGQueueTracker:GetBGStatus(battleFieldIndex)
+	local status, map, instanceID, isRegistered, suspendedQueue, queueType, gameType, role = GetBattlefieldStatus(battleFieldIndex)
 	local bgData = {
 		status = status,
-		map = map or idMap[bgid],
+		map = map,
 		instanceID = instanceID,
 		isRegistered = isRegistered, 
 		suspendedQueue = suspendedQueue, 
 		queueType = queueType, 
 		gameType = gameType, 
 		role = role,
-		confirmTime = GetBattlefieldPortExpiration(bgid),
-		waitTime = GetBattlefieldTimeWaited(bgid),
-		estTime = GetBattlefieldEstimatedWaitTime(bgid),
-		groupData = BGQueueTracker:GetGroupData()
+		confirmTime = GetBattlefieldPortExpiration(battleFieldIndex),
+		waitTime = GetBattlefieldTimeWaited(battleFieldIndex),
+		estTime = GetBattlefieldEstimatedWaitTime(battleFieldIndex)
 	}
 	return bgData
 end
 
-function BGQueueTracker:UpdatePlayerBGTimes(bgid, bgData)
-	if bgData.map then
-		local t = GetServerTime()
-		--BGQueueTracker:Print(format('%s status=%s (%i)', bgData.map or '', bgData.status or '', bgData.waitTime))
-		if(bgData.status == "none") then
-		-- queue ended
-			BGQueueTracker:Print(format("ending queue: %s", bgData.map))
-			table.insert(self.db.factionrealm.queueHistory[bgData.map], playerBGTimes[bgData.map])
-			playerBGTimes[bgData.map] = nil
-			idMap[bgid] = nil
-		elseif(bgData.status == "queued") then
-			if idMap[bgid] == nil then
-				BGQueueTracker:Print("starting queue")
-				BGQueueTracker:startQueue(bgData)
-				idMap[bgid] = bgData.map
+function BGQueueTracker:UpdatePlayerBGTimes()
+	local t = GetServerTime()
+	local curTimeData = {}
+	for i, map in ipairs(self.MapNames) do
+		local mapCurTimeData = self.db.factionrealm.queueHistory[map][1]
+		if curBGData[map] then
+			local bgData = curBGData[map]
+			--BGQueueTracker:Print(format('%s status=%s (%i)', bgData.map or '', bgData.status or '', bgData.waitTime))
+			if(bgData.status == "queued") then
+				-- check for new queue only if not in a BG
+				if UnitInBattleground('player') == nil and self.states.isConfirming == false and self.states.isActive == false then
+					-- if the current queue for this map is active or confirm status (meaning the last queue finished already)
+					local isNewQueue = mapCurTimeData == nil or mapCurTimeData.confirmStartTime > 0 or mapCurTimeData.activeStartTime > 0
+					if isNewQueue == false then
+						-- or if the startTime is different (meaning the last one was canceled and this is a new entry)
+						-- if the startTime of the new bgData precedes the receipt time of the last time data, then it's likely the same queue entry
+						local startTime = t - (bgData.waitTime/1000)
+						local lastReceiptTime = mapCurTimeData.startTime + mapCurTimeData.waitSeconds
+						isNewQueue = startTime > lastReceiptTime and mapCurTimeData.waitSeconds > 15
+						--BGQueueTracker:Print(format("Queue start time diff: %i", diff))
+						--isNewQueue = diff > 1
+					end
+					-- then start a new queue
+					if isNewQueue then
+						mapCurTimeData = BGQueueTracker:startQueue(bgData)
+						table.insert(self.db.factionrealm.queueHistory[map], 1, mapCurTimeData)
+					end
+				end
+				if(bgData.estTime > 0) then
+					mapCurTimeData.finalEst = bgData.estTime
+				end
+				-- why am i not just using bgData.waitTime/1000?
+				-- note - this should be calculated periodically in a separate update and re-drawn in the UI
+				mapCurTimeData.waitSeconds = t - mapCurTimeData.startTime
+				BGQueueTracker:checkPause(bgData)
+			elseif(bgData.status == "confirm") then
+				self.states.isConfirming = true
+				self.states.isActive = false
+				mapCurTimeData.confirmStartTime = t
+				mapCurTimeData.waitSeconds = t - mapCurTimeData.startTime
+				--BGQueueTracker:Print("confirm queue")
+			elseif(bgData.status == "active") then
+				self.states.isConfirming = false
+				self.states.isActive = true
+				--BGQueueTracker:Print("active queue")
+				mapCurTimeData.activeStartTime = t
+				-- TODO move run time to different event handler
+				--local runTime = GetBattlefieldInstanceRunTime() 
+				--BGQueueTracker:Print(format('bg active: activeDuration=%i', runTime))
+				--mapCurTimeData.activeDuration = runTime
+			elseif(bgData.status == "none") then
+				BGQueueTracker:Print(format("Queue Status 'none': %s", map))
 			end
-			if(bgData.estTime > 0) then
-				playerBGTimes[bgData.map].finalEst = bgData.estTime
-			end
-			playerBGTimes[bgData.map].waitSeconds = t - playerBGTimes[bgData.map].startTime
-			BGQueueTracker:checkPause(bgData)
-		elseif(bgData.status == "confirm") then
-			playerBGTimes[bgData.map].confirmStartTime = t
-			playerBGTimes[bgData.map].waitSeconds = t - playerBGTimes[bgData.map].startTime
-			--BGQueueTracker:Print("confirm queue")
-		elseif(bgData.status == "active") then
-			--BGQueueTracker:Print("active queue")
-			playerBGTimes[bgData.map].activeStartTime = t
-
-			-- TODO move run time to different event handler
-			--local runTime = GetBattlefieldInstanceRunTime() 
-			--BGQueueTracker:Print(format('bg active: activeDuration=%i', runTime))
-			--playerBGTimes[bgData.map].activeDuration = runTime
+			self.db.factionrealm.queueHistory[map][1] = mapCurTimeData
+			curTimeData[map] = mapCurTimeData
+		--else
+		--	-- track a grace period and if it has passed, end the queue
+		--	if mapCurTimeData.endingTimestamp <= 0 then
+		--		mapCurTimeData.endingTimestamp = t
+		--	elseif t - mapCurTimeData.endingTimestamp > 2000 then
+		--		-- queue ended
+		--		BGQueueTracker:Print(format("Ending Queue: %s", map))
+		--		-- TODO - think.. does it actually need to end?
+		--	end
 		end
-		prevBGData[bgData.map] = bgData
-	--else
-		--	BGQueueTracker.Print(format('queue ended but %i is not mapped', bgid))
 	end
+	return curTimeData
 end
 
 function BGQueueTracker:startQueue(bgData)
+	--BGQueueTracker:Print(format("Starting New Queue: %s", bgData.map))
 	--BGQueueTracker:Print(format('new queue started: waitTime=%i', bgData.waitTime))
 	-- track the duration in queue (wait time)
 	-- track the durations that a queue is paused
 	-- track the duration for an active BG
 	local s = bgData.waitTime/1000
-	playerBGTimes[bgData.map] = {
+	local newTimesData = {
 		startTime = GetServerTime() - s,
 		waitSeconds = s,
 		confirmStartTime = 0,
@@ -143,14 +209,15 @@ function BGQueueTracker:startQueue(bgData)
 		currentPause = nil,
 		queuePauses = {},
 		activeStartTime = 0,
-		activeDuration = 0
+		activeDuration = 0,
+		endingTimestamp = 0
 	}
-	self.db.factionrealm.currentQueueTimes[bgData.map] = playerBGTimes[bgData.map]
+	return newTimesData
 end
 
 function BGQueueTracker:checkPause(bgData)
 	if prevBGData and prevBGData[bgData.map] and bgData.waitTime > 2000 then
-		local timeData = playerBGTimes[bgData.map]
+		local timeData = self.db.factionrealm.queueHistory[bgData.map][1]
 		local prev = prevBGData[bgData.map]
 		-- new pause starts if prev data has est time > 0 and current data has est == 0
 		if not timeData.currentPause and (prev.estTime and prev.estTime > 0) and (not bgData.estTime or bgData.estTime == 0) then
@@ -165,14 +232,14 @@ function BGQueueTracker:checkPause(bgData)
 			--BGQueueTracker:Print(format('pause end: stop=%i', bgData.waitTime))
 		end
 		--if bgData.estTime == 0 and then
-		--	local numPauses = #(playerBGTimes[bgData.map].queuePauses)
-		--	if(numPauses == 0 or playerBGTimes[bgData.map].queuePauses[numPauses].stop > 0) then
+		--	local numPauses = #(self.db.factionrealm.currentQueueTimes[bgData.map].queuePauses)
+		--	if(numPauses == 0 or self.db.factionrealm.currentQueueTimes[bgData.map].queuePauses[numPauses].stop > 0) then
 		--		-- new pause started
-		--		table.insert(playerBGTimes[bgData.map].queuePauses, { start = bgData.waitTime, stop = 0 })
+		--		table.insert(self.db.factionrealm.currentQueueTimes[bgData.map].queuePauses, { start = bgData.waitTime, stop = 0 })
 		--		BGQueueTracker:Print(format('new pause: start=%i', bgData.waitTime))
 		--	else
 		--		-- last pause ended
-		--		playerBGTimes[bgData.map].queuePauses[#playerBGTimes[bgData.map].queuePauses].stop = bgData.waitTime
+		--		self.db.factionrealm.currentQueueTimes[bgData.map].queuePauses[#self.db.factionrealm.currentQueueTimes[bgData.map].queuePauses].stop = bgData.waitTime
 		--		BGQueueTracker:Print(format('pause end: stop=%i', bgData.waitTime))
 		--	end
 		--end
