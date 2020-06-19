@@ -429,7 +429,7 @@ function updatePlayerTime(player)
 end
 
 function getBGText(elapsed, bgData, prependMap)
-	text = nil
+	local text = nil
 	if(bgData) then
 		if(bgData.suspendedQueue) then
 			text = 'Suspended!'
@@ -438,7 +438,13 @@ function getBGText(elapsed, bgData, prependMap)
 		elseif(bgData.status == "confirm") then
 			text = formatShortTime(bgData.confirmTime)
 		elseif(bgData.status == "queued") then
-			text = string.format("%s (%s)", formatShortTime(bgData.waitTime + elapsed or 0), formatShortTime(bgData.estTime or 0))
+			local curEstimate = ''
+			if not bgData.estTime or bgData.estTime == 0 then
+				curEstimate = 'Paused'
+			else
+				curEstimate = formatShortTime(bgData.estTime)
+			end
+			text = string.format("%s (%s)", formatShortTime(bgData.waitTime + elapsed or 0), curEstimate)
 		end
 		if(text ~= nil and prependMap) then
 			text = string.format("%s: %s", bgData.map, text)

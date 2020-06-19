@@ -220,17 +220,19 @@ function BGQueueTracker:checkPause(bgData)
 	if prevBGData and prevBGData[bgData.map] and bgData.waitTime > 2000 then
 		local timeData = self.db.factionrealm.queueHistory[bgData.map][1]
 		local prev = prevBGData[bgData.map]
+		local curPause = timeData.queuePauses[1]
 		-- new pause starts if prev data has est time > 0 and current data has est == 0
-		if not timeData.currentPause and (prev.estTime and prev.estTime > 0) and (not bgData.estTime or bgData.estTime == 0) then
-			timeData.currentPause = { start = bgData.waitTime, stop = 0 }
-			--BGQueueTracker:Print(format('new pause: start=%i', bgData.waitTime))
-		-- pause continues if prev data has est time == 0 and current data has est == 0	
-		-- pause ends if prev data has est time == 0 and current data has est > 0
-		elseif timeData.currentPause and (not prev.estTime or prev.estTime == 0) and (bgData.estTime and bgData.estTime > 0) then
-			timeData.currentPause.stop = bgData.waitTime
-			table.insert(timeData.queuePauses, timeData.currentPause)
-			timeData.currentPause = nil
-			--BGQueueTracker:Print(format('pause end: stop=%i', bgData.waitTime))
+		if (not curPause or curPause.ended) and (prev.estTime and prev.estTime > 0) and (not bgData.estTime or bgData.estTime == 0) then
+			table.insert(timeData.queuePauses, 1, { start = bgData.waitTime, stop = bgData.waitTime, ended = false })
+			--BGQueueTracker:Print(format('new pause: start=%i', bgData.waitTime))		
+		elseif curPause and (not prev.estTime or prev.estTime == 0) then			
+			-- pause continues if prev data has est time == 0 and current data has est == 0	
+			timeData.queuePauses[1].stop = bgData.waitTime
+			-- pause ends if prev data has est time == 0 and current data has est > 0
+			if (bgData.estTime and bgData.estTime > 0) then
+				timeData.queuePauses[1].ended = true
+				--BGQueueTracker:Print(format('pause end: stop=%i', bgData.waitTime))
+			end
 		end
 		--if bgData.estTime == 0 and then
 		--	local numPauses = #(self.db.factionrealm.currentQueueTimes[bgData.map].queuePauses)
