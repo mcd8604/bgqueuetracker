@@ -368,7 +368,13 @@ function DrawMinimapIcon()
 		text = addonName,
 		icon = "Interface\\Icons\\ability_townwatch",
 		OnClick = function(self, button) 
+			--if (button == "RightButton") then
+			--elseif (button == "MiddleButton") then
 			BGQueueTrackerGUI:Toggle()
 		end,
+		OnTooltipShow = function(tooltip)
+			tooltip:AddDoubleLine(format("%s", addonName), format("|cff777777v%s", GetAddOnMetadata(addonName, "Version")));
+			tooltip:AddLine("|cFFCFCFCFLeft Click: |rOpen BG Queue Tracker");
+		end
 	}), BGQueueTracker.db.factionrealm.minimapButton);
 end
