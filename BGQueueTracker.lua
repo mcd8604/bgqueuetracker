@@ -366,7 +366,7 @@ function DrawMinimapIcon()
 	{
 		type = "data source",
 		text = addonName,
-		icon = "Interface\\Icons\\inv_cape_battlepvps1_d_01_horde",
+		icon = "Interface\\Icons\\ability_townwatch",
 		OnClick = function(self, button) 
 			BGQueueTrackerGUI:Toggle()
 		end,
