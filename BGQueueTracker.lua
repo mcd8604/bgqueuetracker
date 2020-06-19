@@ -20,10 +20,10 @@ function BGQueueTracker:OnInitialize()
 			minimapButton = {hide = false},
 		}
 	}, true)
-	self.states = {
-		isConfirming = false,
-		isActive = false
-	}
+	--self.states = {
+	--	isConfirming = false,
+	--	isActive = false
+	--}
 	--self:RegisterEvent("CHAT_MSG_COMBAT_HONOR_GAIN", CHAT_MSG_COMBAT_HONOR_GAIN_EVENT);
 	self:RegisterComm(commPrefix, "OnCommReceive")
 	self:RegisterEvent("PLAYER_DEAD");
@@ -69,8 +69,8 @@ function BGQueueTracker:UPDATE_BATTLEFIELD_STATUS(event, battleFieldIndex)
 	--	end
 	--else
 		--BGQueueTracker:Print("UPDATE_BATTLEFIELD_STATUS")
-		local instance, instanceType = IsInInstance();
-		self.states.isActive = instance and instanceType == "pvp"
+		--local instance, instanceType = IsInInstance();
+		--self.states.isActive = instance and instanceType == "pvp"
 
 		prevBGData = curBGData
 		curBGData = {}
@@ -95,8 +95,8 @@ end
 
 function BGQueueTracker:PLAYER_ENTERING_BATTLEGROUND(event)
 	BGQueueTracker:Print("PLAYER_ENTERING_BATTLEGROUND")
-	self.states.isConfirming = false
-	self.states.isActive = true
+	--self.states.isConfirming = false
+	--self.states.isActive = true
 end
 
 function BGQueueTracker:UPDATE_ACTIVE_BATTLEFIELD(event)
@@ -135,7 +135,7 @@ function BGQueueTracker:UpdatePlayerBGTimes()
 			--BGQueueTracker:Print(format('%s status=%s (%i)', bgData.map or '', bgData.status or '', bgData.waitTime))
 			if(bgData.status == "queued") then
 				-- check for new queue only if not in a BG
-				if UnitInBattleground('player') == nil and self.states.isConfirming == false and self.states.isActive == false then
+				if UnitInBattleground('player') == nil then --and self.states.isConfirming == false and self.states.isActive == false then
 					-- if the current queue for this map is active or confirm status (meaning the last queue finished already)
 					local isNewQueue = mapCurTimeData == nil or mapCurTimeData.confirmStartTime > 0 or mapCurTimeData.activeStartTime > 0
 					if isNewQueue == false then
@@ -161,14 +161,14 @@ function BGQueueTracker:UpdatePlayerBGTimes()
 				mapCurTimeData.waitSeconds = t - mapCurTimeData.startTime
 				BGQueueTracker:checkPause(bgData)
 			elseif(bgData.status == "confirm") then
-				self.states.isConfirming = true
-				self.states.isActive = false
+				--self.states.isConfirming = true
+				--self.states.isActive = false
 				mapCurTimeData.confirmStartTime = t
 				mapCurTimeData.waitSeconds = t - mapCurTimeData.startTime
 				--BGQueueTracker:Print("confirm queue")
 			elseif(bgData.status == "active") then
-				self.states.isConfirming = false
-				self.states.isActive = true
+				--self.states.isConfirming = false
+				--self.states.isActive = true
 				--BGQueueTracker:Print("active queue")
 				mapCurTimeData.activeStartTime = t
 				-- TODO move run time to different event handler
