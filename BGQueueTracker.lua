@@ -16,7 +16,8 @@ function BGQueueTracker:OnInitialize()
 				["Warsong Gulch"]	= {},
 				["Alterac Valley"]	= {},
 				["Arathi Basin"]	= {} 
-			}
+			},
+			minimapButton = {hide = false},
 		}
 	}, true)
 	self.states = {
@@ -369,5 +370,5 @@ function DrawMinimapIcon()
 		OnClick = function(self, button) 
 			BGQueueTrackerGUI:Toggle()
 		end,
-	}), BGQueueTracker.db.minimapButton);
+	}), BGQueueTracker.db.factionrealm.minimapButton);
 end
