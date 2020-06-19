@@ -375,8 +375,16 @@ function DrawMinimapIcon()
 			BGQueueTrackerGUI:Toggle()
 		end,
 		OnTooltipShow = function(tooltip)
-			tooltip:AddDoubleLine(format("%s", addonName), format("|cff777777v%s", GetAddOnMetadata(addonName, "Version")));
+			tooltip:AddLine(format("%s", addonName));
 			tooltip:AddLine("|cFFCFCFCFLeft Click: |rOpen BG Queue Tracker");
+			--GetMaxBattlefieldId()=3
+			for map, data in pairs(curBGData) do
+				timeData = BGQueueTracker.db.factionrealm.queueHistory[map][1]
+				if timeData then
+					tooltip:AddLine(' ')
+					BGQueueTrackerGUI:appendQueueDataToTooltip(tooltip, map, timeData)
+				end
+			end
 		end
 	}), BGQueueTracker.db.factionrealm.minimapButton);
 end
