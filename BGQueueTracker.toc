@@ -5,7 +5,7 @@
 
 ## Author: Maurty
 ## OptionalDeps: Ace3
-## Version: 0.2.4
+## Version: 0.3
 
 ## X-Category: Battlegrounds/PvP
 ## SavedVariables: BGQueueTrackerDB
