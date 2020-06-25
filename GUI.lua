@@ -445,7 +445,7 @@ function getBGText(elapsed, bgData, prependMap)
 	if(bgData) then
 		if(bgData.suspendedQueue) then
 			text = 'Suspended!'
-		elseif(bgData.status == "active" and bgData.instanceID > 0) then
+		elseif(bgData.status == "active") then
 			text = 'In BG'
 		elseif(bgData.status == "confirm") then
 			text = formatShortTime(bgData.confirmTime)
