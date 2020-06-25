@@ -179,7 +179,7 @@ function GUI:CreatePlayerRow(name, player)
 			btn:SetWidth(120)
 			if(bg) then 
 				btn:SetText(getBGText(player.elapsed, bg, false))
-				GUI:setTimeTooltip(btn, map, player.timeData[map])
+				GUI:setTimeTooltip(btn, map, bg, player.timeData[map])
 			else
 				btn:SetText("")
 			end
@@ -191,28 +191,36 @@ function GUI:CreatePlayerRow(name, player)
 	return row
 end
 
-function GUI:setTimeTooltip(widget, map, data)
-	if(data) then
+function GUI:setTimeTooltip(widget, map, bgData, timeData)
+	if(bgData) then
 		widget:SetCallback("OnEnter", function (widget, event) 
 			GameTooltip:SetOwner(mainFrame.frame, "ANCHOR_CURSOR");
-			GUI:appendQueueDataToTooltip(GameTooltip, map, data)
+			GUI:appendQueueDataToTooltip(GameTooltip, map, bgData, timeData)
 			GameTooltip:Show()
 		end)
 		widget:SetCallback("OnLeave", function (widget, event) GameTooltip:Hide() end)
 	end
 end
 
-function GUI:appendQueueDataToTooltip(tooltip, map, data)
-	tooltip:AddLine(format("%s", map))
-	tooltip:AddDoubleLine("Start Time:", date("%x %X", data.startTime), 1,1,1, 1,1,1)
-	local waitDuration = data.waitSeconds * 1000
+function GUI:appendQueueDataToTooltip(tooltip, map, bgData, timeData)
+	local soloGroup = "(Solo)"
+	if bgData.asGroup == true then
+		soloGroup = "(Group)"
+	end
+	local paused = ''
+	if not bgData.estTime or bgData.estTime == 0 then
+		paused = '|cFFFF0000*Paused*'
+	end
+	tooltip:AddDoubleLine(format("|r%s |cFF00CFCF%s", map, soloGroup), paused)
+	tooltip:AddDoubleLine("Start Time:", date("%x %X", timeData.startTime), 1,1,1, 1,1,1)
+	local waitDuration = timeData.waitSeconds * 1000
 	tooltip:AddDoubleLine("Time Waited:", formatShortTime(waitDuration), 1,1,1, 1,1,1)
-	tooltip:AddDoubleLine("Initial Estimate:", formatShortTime(data.initialEst), 1,1,1, 1,1,1)
-	tooltip:AddDoubleLine("Current Estimate:", formatShortTime(data.finalEst), 1,1,1, 1,1,1)
-	if(data.queuePauses) then
+	tooltip:AddDoubleLine("Initial Estimate:", formatShortTime(timeData.initialEst), 1,1,1, 1,1,1)
+	tooltip:AddDoubleLine("Current Estimate:", formatShortTime(timeData.finalEst), 1,1,1, 1,1,1)
+	if(timeData.queuePauses) then
 		local totalPauseDuration = 0
-		tooltip:AddLine(format("Pauses (%i)", #data.queuePauses), 1, 1, 1, 1, 1)
-		for i, p in ipairs(data.queuePauses) do
+		tooltip:AddLine(format("Pauses (%i)", #timeData.queuePauses), 1, 1, 1, 1, 1)
+		for i, p in ipairs(timeData.queuePauses) do
 			local pauseDuration = p.stop - p.start
 			if(pauseDuration > 0) then
 				totalPauseDuration = totalPauseDuration + pauseDuration
@@ -221,16 +229,16 @@ function GUI:appendQueueDataToTooltip(tooltip, map, data)
 				format(
 					"(%s)",
 					--"%s to %s (%s)", 
-					--date("%H:%M:%S", data.startTime + p.start), 
-					--date("%H:%M:%S", data.startTime + p.stop), 
+					--date("%H:%M:%S", timeData.startTime + p.start), 
+					--date("%H:%M:%S", timeData.startTime + p.stop), 
 					formatShortTime(pauseDuration)
 				), 1, 1, 1, 1, 1)
 		end
 		tooltip:AddDoubleLine("Total Time Paused:", formatShortTime(totalPauseDuration), 1,1,1, 1,1,1)
-		local adjustedEst = data.finalEst + totalPauseDuration
+		local adjustedEst = timeData.finalEst + totalPauseDuration
 		--tooltip:AddDoubleLine("Adjusted Estimate:", formatShortTime(adjustedEst), 1,1,1, 0.5,0.5,1)
-		if(data.confirmStartTime > 0) then
-			tooltip:AddDoubleLine("Pop Time:", date("%X", data.confirmStartTime), 1,1,1, 1,1,1)
+		if(timeData.confirmStartTime > 0) then
+			tooltip:AddDoubleLine("Pop Time:", date("%X", timeData.confirmStartTime), 1,1,1, 1,1,1)
 		else
 			local remaining = adjustedEst - waitDuration
 			r,g,b = 0.5,1,0.5

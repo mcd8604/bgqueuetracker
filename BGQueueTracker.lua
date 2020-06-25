@@ -37,7 +37,7 @@ function BGQueueTracker:OnEnable()
 	self:RegisterEvent("PLAYER_ENTERING_BATTLEGROUND")	
 	--self:RegisterEvent("UPDATE_ACTIVE_BATTLEFIELD")	
 	--self:RegisterEvent("BATTLEFIELD_QUEUE_TIMEOUT")	
-	--self:RegisterEvent("GROUP_ROSTER_UPDATE")
+	self:RegisterEvent("GROUP_ROSTER_UPDATE")
 	--self:RegisterEvent("FRIENDLIST_UPDATE");
 	--ChatFrame_AddMessageEventFilter("CHAT_MSG_SYSTEM", function(frame, event, message, ...)
 	--	return message:match("No player named") ~= nil
@@ -108,7 +108,7 @@ function BGQueueTracker:BATTLEFIELD_QUEUE_TIMEOUT(event)
 end
 
 function BGQueueTracker:GetBGStatus(battleFieldIndex)
-	local status, map, instanceID, isRegistered, suspendedQueue, queueType, gameType, role = GetBattlefieldStatus(battleFieldIndex)
+	local status, map, teamSize, registeredMatch, suspendedQueue, queueType, gameType, unknown, role, asGroup, shortDescription, longDescription = GetBattlefieldStatus(battleFieldIndex)
 	local bgData = {
 		status = status,
 		map = map,
@@ -118,6 +118,7 @@ function BGQueueTracker:GetBGStatus(battleFieldIndex)
 		queueType = queueType, 
 		gameType = gameType, 
 		role = role,
+		asGroup = asGroup,
 		confirmTime = GetBattlefieldPortExpiration(battleFieldIndex),
 		waitTime = GetBattlefieldTimeWaited(battleFieldIndex),
 		estTime = GetBattlefieldEstimatedWaitTime(battleFieldIndex)
@@ -379,10 +380,11 @@ function DrawMinimapIcon()
 			tooltip:AddLine("|cFFCFCFCFLeft Click: |rOpen BG Queue Tracker");
 			--GetMaxBattlefieldId()=3
 			for map, data in pairs(curBGData) do
+				BGQueueTracker:Print(data.asGroup)
 				timeData = BGQueueTracker.db.factionrealm.queueHistory[map][1]
 				if timeData then
 					tooltip:AddLine(' ')
-					BGQueueTrackerGUI:appendQueueDataToTooltip(tooltip, map, timeData)
+					BGQueueTrackerGUI:appendQueueDataToTooltip(tooltip, map, data, timeData)
 				end
 			end
 		end
