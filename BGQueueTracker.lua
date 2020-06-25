@@ -380,7 +380,6 @@ function DrawMinimapIcon()
 			tooltip:AddLine("|cFFCFCFCFLeft Click: |rOpen BG Queue Tracker");
 			--GetMaxBattlefieldId()=3
 			for map, data in pairs(curBGData) do
-				BGQueueTracker:Print(data.asGroup)
 				timeData = BGQueueTracker.db.factionrealm.queueHistory[map][1]
 				if timeData then
 					tooltip:AddLine(' ')
