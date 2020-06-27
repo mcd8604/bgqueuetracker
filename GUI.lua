@@ -203,53 +203,59 @@ function GUI:setTimeTooltip(widget, map, bgData, timeData)
 end
 
 function GUI:appendQueueDataToTooltip(tooltip, map, bgData, timeData)
-	local soloGroup = "(Solo)"
-	if bgData.asGroup == true then
-		soloGroup = "(Group)"
-	end
+	local soloGroup = ''
 	local paused = ''
-	if not bgData.estTime or bgData.estTime == 0 then
-		paused = '|cFFFF0000*Paused*'
+	if bgData then
+		if bgData.asGroup == true then
+			soloGroup = '(Group)'
+		else
+			soloGroup = '(Solo)'
+		end
+		if not bgData.estTime or bgData.estTime == 0 then
+			paused = '|cFFFF0000*Paused*'
+		end
 	end
 	tooltip:AddDoubleLine(format("|r%s |cFF00CFCF%s", map, soloGroup), paused)
-	tooltip:AddDoubleLine("Start Time:", date("%x %X", timeData.startTime), 1,1,1, 1,1,1)
-	local waitDuration = timeData.waitSeconds * 1000
-	tooltip:AddDoubleLine("Time Waited:", formatShortTime(waitDuration), 1,1,1, 1,1,1)
-	tooltip:AddDoubleLine("Initial Estimate:", formatShortTime(timeData.initialEst), 1,1,1, 1,1,1)
-	tooltip:AddDoubleLine("Current Estimate:", formatShortTime(timeData.finalEst), 1,1,1, 1,1,1)
-	if(timeData.queuePauses) then
-		local totalPauseDuration = 0
-		tooltip:AddLine(format("Pauses (%i)", #timeData.queuePauses), 1, 1, 1, 1, 1)
-		for i, p in ipairs(timeData.queuePauses) do
-			local pauseDuration = p.stop - p.start
-			if(pauseDuration > 0) then
-				totalPauseDuration = totalPauseDuration + pauseDuration
+	if timeData then
+		tooltip:AddDoubleLine("Start Time:", date("%x %X", timeData.startTime), 1,1,1, 1,1,1)
+		local waitDuration = timeData.waitSeconds * 1000
+		tooltip:AddDoubleLine("Time Waited:", formatShortTime(waitDuration), 1,1,1, 1,1,1)
+		tooltip:AddDoubleLine("Initial Estimate:", formatShortTime(timeData.initialEst), 1,1,1, 1,1,1)
+		tooltip:AddDoubleLine("Current Estimate:", formatShortTime(timeData.finalEst), 1,1,1, 1,1,1)
+		if(timeData.queuePauses) then
+			local totalPauseDuration = 0
+			tooltip:AddLine(format("Pauses (%i)", #timeData.queuePauses), 1, 1, 1, 1, 1)
+			for i, p in ipairs(timeData.queuePauses) do
+				local pauseDuration = p.stop - p.start
+				if(pauseDuration > 0) then
+					totalPauseDuration = totalPauseDuration + pauseDuration
+				end
+				tooltip:AddLine(
+					format(
+						"(%s)",
+						--"%s to %s (%s)", 
+						--date("%H:%M:%S", timeData.startTime + p.start), 
+						--date("%H:%M:%S", timeData.startTime + p.stop), 
+						formatShortTime(pauseDuration)
+					), 1, 1, 1, 1, 1)
 			end
-			tooltip:AddLine(
-				format(
-					"(%s)",
-					--"%s to %s (%s)", 
-					--date("%H:%M:%S", timeData.startTime + p.start), 
-					--date("%H:%M:%S", timeData.startTime + p.stop), 
-					formatShortTime(pauseDuration)
-				), 1, 1, 1, 1, 1)
-		end
-		tooltip:AddDoubleLine("Total Time Paused:", formatShortTime(totalPauseDuration), 1,1,1, 1,1,1)
-		local adjustedEst = timeData.finalEst + totalPauseDuration
-		--tooltip:AddDoubleLine("Adjusted Estimate:", formatShortTime(adjustedEst), 1,1,1, 0.5,0.5,1)
-		if(timeData.confirmStartTime > 0) then
-			tooltip:AddDoubleLine("Pop Time:", date("%X", timeData.confirmStartTime), 1,1,1, 1,1,1)
-		else
-			local remaining = adjustedEst - waitDuration
-			r,g,b = 0.5,1,0.5
-			local isNegative = remaining < 0
-			local remainingPrefix = ''
-			if isNegative then
-				r,g,b = 1,0.5,0.5
-				remainingPrefix = '-'
+			tooltip:AddDoubleLine("Total Time Paused:", formatShortTime(totalPauseDuration), 1,1,1, 1,1,1)
+			local adjustedEst = timeData.finalEst + totalPauseDuration
+			--tooltip:AddDoubleLine("Adjusted Estimate:", formatShortTime(adjustedEst), 1,1,1, 0.5,0.5,1)
+			if(timeData.confirmStartTime > 0) then
+				tooltip:AddDoubleLine("Pop Time:", date("%X", timeData.confirmStartTime), 1,1,1, 1,1,1)
+			else
+				local remaining = adjustedEst - waitDuration
+				r,g,b = 0.5,1,0.5
+				local isNegative = remaining < 0
+				local remainingPrefix = ''
+				if isNegative then
+					r,g,b = 1,0.5,0.5
+					remainingPrefix = '-'
+				end
+				tooltip:AddDoubleLine("Remaining Time:", remainingPrefix..formatShortTime(math.abs(remaining)), 1,1,1, r,g,b)
+				tooltip:AddDoubleLine("Expected Pop:", date("%X", GetServerTime() + (remaining/1000)), 1,1,1, 0.5,0.5,1)
 			end
-			tooltip:AddDoubleLine("Remaining Time:", remainingPrefix..formatShortTime(math.abs(remaining)), 1,1,1, r,g,b)
-			tooltip:AddDoubleLine("Expected Pop:", date("%X", GetServerTime() + (remaining/1000)), 1,1,1, 0.5,0.5,1)
 		end
 	end
 end
