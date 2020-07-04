@@ -174,8 +174,8 @@ function BGQueueTracker:UpdatePlayerBGTimes()
 	local curTimeData = {}
 	for i, map in ipairs(self.MapNames) do
 		local mapCurTimeData = self.db.factionrealm.queueHistory[map][1]
-		if curBGData[map] then
-			local bgData = curBGData[map]
+		local bgData = BGQueueTracker.db.factionrealm.curBGData[map]
+		if bgData then
 			--BGQueueTracker:Print(format('%s status=%s (%i)', bgData.map or '', bgData.status or '', bgData.waitTime))
 			if(bgData.status == "queued") then
 				-- check for new queue only if not in a BG
@@ -443,7 +443,7 @@ function DrawMinimapIcon()
 			tooltip:AddLine(format("%s", addonName));
 			tooltip:AddLine("|cFFCFCFCFLeft Click: |rOpen BG Queue Tracker");
 			--GetMaxBattlefieldId()=3
-			for map, data in pairs(curBGData) do
+			for map, data in pairs(BGQueueTracker.db.factionrealm.curBGData) do
 				timeData = BGQueueTracker.db.factionrealm.queueHistory[map][1]
 				if timeData then
 					tooltip:AddLine(' ')
