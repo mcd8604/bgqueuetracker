@@ -55,7 +55,7 @@ function BGQueueTracker:GROUP_ROSTER_UPDATE(event)
 	local newGroupData = BGQueueTracker:GetGroupData()
 	local playersJoined = BGQueueTracker:GetPlayersJoined(self.db.factionrealm.groupData, newGroupData)
 	if #playersJoined > 0 then
-		handlePlayersJoined(playersJoined)
+		BGQueueTracker:handlePlayersJoined(playersJoined)
 	end
 	self.db.factionrealm.groupData = newGroupData
 end
