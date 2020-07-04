@@ -4,9 +4,6 @@ local addonName = GetAddOnMetadata("BGQueueTracker", "Title");
 local commPrefix = addonName .. "1";
 
 local playerName = UnitName("player");
-local curBGData = {}
-local prevBGData = {}
-local groups = {}
 
 function BGQueueTracker:OnInitialize()
 	self.MapNames = {"Warsong Gulch", "Alterac Valley", "Arathi Basin"}
@@ -18,6 +15,10 @@ function BGQueueTracker:OnInitialize()
 				["Arathi Basin"]	= {} 
 			},
 			minimapButton = {hide = false},
+			curBGData = {},
+			prevBGData = {},
+			groupData = {},
+			isGroupQueued = false
 		}
 	}, true)
 	--self.states = {
@@ -39,6 +40,8 @@ function BGQueueTracker:OnEnable()
 	--self:RegisterEvent("BATTLEFIELD_QUEUE_TIMEOUT")	
 	self:RegisterEvent("GROUP_ROSTER_UPDATE")
 	--self:RegisterEvent("FRIENDLIST_UPDATE");
+	self:RegisterEvent("PLAYER_ENTERING_WORLD")
+	self:RegisterEvent("PLAYER_LEAVING_WORLD")
 	--ChatFrame_AddMessageEventFilter("CHAT_MSG_SYSTEM", function(frame, event, message, ...)
 	--	return message:match("No player named") ~= nil
 	--end)
@@ -47,7 +50,44 @@ end
 function BGQueueTracker:Reload()
 end
 
-function BGQueueTracker:GROUP_ROSTER_UPDATE(event)
+-- Fired whenever a group or raid is formed or disbanded, players are leaving or joining the group or raid.
+function BGQueueTracker:GROUP_ROSTER_UPDATE(event)	
+	local newGroupData = BGQueueTracker:GetGroupData()
+	local playersJoined = BGQueueTracker:GetPlayersJoined(self.db.factionrealm.groupData, newGroupData)
+	if #playersJoined > 0 then
+		handlePlayersJoined(playersJoined)
+	end
+	self.db.factionrealm.groupData = newGroupData
+end
+
+function BGQueueTracker:GetPlayersJoined(oldGroupData, newGroupData)
+	local playersJoined = {}
+	for playerName, playerData in pairs(newGroupData) do
+		if not oldGroupData[playerName] then
+			table.insert(playersJoined, playerName)
+		end
+	end
+	return playersJoined
+end
+
+function BGQueueTracker:PLAYER_ENTERING_WORLD(event, isInitialLogin, isReloadingUi)
+	if isInitialLogin then
+		--BGQueueTracker:Print(format("%s: %s %s", event, tostring(isInitialLogin), tostring(isReloadingUi)))
+
+	end
+end
+
+function BGQueueTracker:PLAYER_LEAVING_WORLD(event)
+	--BGQueueTracker:Print(event)
+end
+
+function BGQueueTracker:handlePlayersJoined(playersJoined)
+	--local outStr = "Player(s) Joined: "
+	--for i, playerName in ipairs(playersJoined) do
+	--	outStr = outStr .. playerName .. " "
+	--end
+	--BGQueueTracker:Print(outStr)
+	BGQueueTracker:resetGroupQueues()
 end
 
 --function BGQueueTracker:FRIENDLIST_UPDATE()
@@ -72,18 +112,21 @@ function BGQueueTracker:UPDATE_BATTLEFIELD_STATUS(event, battleFieldIndex)
 		--local instance, instanceType = IsInInstance();
 		--self.states.isActive = instance and instanceType == "pvp"
 
-		prevBGData = curBGData
-		curBGData = {}
+		self.db.factionrealm.prevBGData = self.db.factionrealm.curBGData
+		self.db.factionrealm.curBGData = {}
+		--local asGroup = false
 		--GetMaxBattlefieldId()=3
 		for i=1,3 do
 			bgData = BGQueueTracker:GetBGStatus(i)
 			if bgData.map then
-				curBGData[bgData.map] = bgData
+				self.db.factionrealm.curBGData[bgData.map] = bgData
 			end
+			--asGroup = asGroup or bgData.asGroup
 		end
+		--isGroupQueued = asGroup
+		self.db.factionrealm.groupData = BGQueueTracker:GetGroupData()
 		curTimeData = BGQueueTracker:UpdatePlayerBGTimes()
-		groupData = BGQueueTracker:GetGroupData()
-		BGQueueTrackerGUI:SetPlayerData(playerName, curBGData, groupData, curTimeData)
+		BGQueueTrackerGUI:SetPlayerData(playerName, self.db.factionrealm.curBGData, self.db.factionrealm.groupData, curTimeData)
 		
 		--local serializedData = BGQueueTracker:Serialize(bgData, self.db.factionrealm.currentQueueTimes)
 		--BGQueueTracker:broadcastToGroup(serializedData)
@@ -94,17 +137,17 @@ function BGQueueTracker:UPDATE_BATTLEFIELD_STATUS(event, battleFieldIndex)
 end
 
 function BGQueueTracker:PLAYER_ENTERING_BATTLEGROUND(event)
-	BGQueueTracker:Print("PLAYER_ENTERING_BATTLEGROUND")
+	--BGQueueTracker:Print("PLAYER_ENTERING_BATTLEGROUND")
 	--self.states.isConfirming = false
 	--self.states.isActive = true
 end
 
 function BGQueueTracker:UPDATE_ACTIVE_BATTLEFIELD(event)
-	BGQueueTracker:Print("UPDATE_ACTIVE_BATTLEFIELD")
+	--BGQueueTracker:Print("UPDATE_ACTIVE_BATTLEFIELD")
 end
 
 function BGQueueTracker:BATTLEFIELD_QUEUE_TIMEOUT(event)
-	BGQueueTracker:Print("BATTLEFIELD_QUEUE_TIMEOUT")
+	--BGQueueTracker:Print("BATTLEFIELD_QUEUE_TIMEOUT")
 end
 
 function BGQueueTracker:GetBGStatus(battleFieldIndex)
@@ -157,7 +200,7 @@ function BGQueueTracker:UpdatePlayerBGTimes()
 				if(bgData.estTime > 0) then
 					mapCurTimeData.finalEst = bgData.estTime
 				end
-				-- why am i not just using bgData.waitTime/1000?
+				-- why am i not just using bgData.waitTime/1000? because if the queue is reset, then waitTime is wrong
 				-- note - this should be calculated periodically in a separate update and re-drawn in the UI
 				mapCurTimeData.waitSeconds = t - mapCurTimeData.startTime
 				BGQueueTracker:checkPause(bgData)
@@ -217,10 +260,30 @@ function BGQueueTracker:startQueue(bgData)
 	return newTimesData
 end
 
+function BGQueueTracker:resetGroupQueues()
+	for map, bgData in pairs(self.db.factionrealm.curBGData) do
+		if bgData.asGroup then
+			BGQueueTracker:resetQueue(map)
+		end
+	end
+end
+
+function BGQueueTracker:resetQueue(map)
+	if map then
+		queueTimesData = self.db.factionrealm.queueHistory[map][1]
+		if queueTimesData then
+			queueTimesData.startTime = GetServerTime()
+			queueTimesData.waitSeconds = 0
+			queueTimesData.queuePauses = {}
+			self.db.factionrealm.queueHistory[map][1] = queueTimesData
+		end
+	end
+end
+
 function BGQueueTracker:checkPause(bgData)
-	if prevBGData and prevBGData[bgData.map] and bgData.waitTime > 2000 then
+	if self.db.factionrealm.prevBGData and self.db.factionrealm.prevBGData[bgData.map] and bgData.waitTime > 2000 then
 		local timeData = self.db.factionrealm.queueHistory[bgData.map][1]
-		local prev = prevBGData[bgData.map]
+		local prev = self.db.factionrealm.prevBGData[bgData.map]
 		local curPause = timeData.queuePauses[1]
 		-- new pause starts if prev data has est time > 0 and current data has est == 0
 		if (not curPause or curPause.ended) and (prev.estTime and prev.estTime > 0) and (not bgData.estTime or bgData.estTime == 0) then
@@ -251,24 +314,25 @@ function BGQueueTracker:checkPause(bgData)
 end
 
 function BGQueueTracker:GetGroupData()
-	groupData = {}
-	numGroupMembers = GetNumGroupMembers()
-	if numGroupMembers == 0 then 
+	local groupData = { [playerName] = {} }
+	local homePlayers = GetHomePartyInfo()
+	if not homePlayers then 
 		groupData[playerName] = {}
 	else
-		for i = 1, GetNumGroupMembers() do
-			name, rank, subgroup, level, class, fileName, zone, online, isDead, role, isML, combatRole = GetRaidRosterInfo(i);
-			if name then
-				_, realm = UnitName(name)
-				-- realm is nil if they're from the same realm
-				if realm == nil or realm == '' then
-					groupData[name] = {
-						class = class,
-						isLead = rank == 2,
-						zone = zone
-					}
-				end
-			end
+		for i, name in ipairs(homePlayers) do
+			groupData[name] = {}
+			--name, rank, subgroup, level, class, fileName, zone, online, isDead, role, isML, combatRole = GetRaidRosterInfo(i);
+			--if name then
+			--	_, realm = UnitName(name)
+			--	-- realm is nil if they're from the same realm
+			--	if realm == nil or realm == '' then
+			--		groupData[name] = {
+			--			class = class,
+			--			isLead = rank == 2,
+			--			zone = zone
+			--		}
+			--	end
+			--end
 		end
 	end
 	return groupData
