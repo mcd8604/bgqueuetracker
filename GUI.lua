@@ -67,36 +67,46 @@ function GUI:PrepareGUI()
 	--end)
 	--mainFrame:AddChild(button)
 
+	self.tabsData = {
+		{ value = "group",			displayText = "Queues",		create = self.CreateGroupTimesTable,frameWidth = 600 },
+		--{ value = "friends",		displayText = "Friends",	create = self.CreateFriendsTable,	frameWidth = 600 },
+		{ value = "Warsong Gulch",	displayText = "WSG History",create = self.CreateHistoryTable,	frameWidth = 600 },
+		{ value = "Alterac Valley",	displayText = "AV History", create = self.CreateHistoryTable,	frameWidth = 600 },
+		{ value = "Arathi Basin",	displayText = "AB History", create = self.CreateHistoryTable,	frameWidth = 600 },
+		{ value = "log",			displayText = "Event Log", 	create = self.CreateEventLogTable,	frameWidth = 600 },
+	}
+	self:CreateTabGroup()
+end
+
+function GUI:CreateTabGroup()
 	tabGroup = AceGUI:Create("TabGroup")
-	tabGroup:SetTabs({
-		{text="Group", value="group"}, 
-		--{text="Friends", value="friends"}, 
-		{text="WSG History", value="Warsong Gulch"}, 
-		{text="AV History", value="Alterac Valley"}, 
-		{text="AB History", value="Arathi Basin"}
-	})
+	local tabs = {}
+	for i, tabData in ipairs(self.tabsData) do
+		table.insert(tabs, { text = tabData.displayText, value = i })
+	end
+	tabGroup:SetTabs(tabs)
 	tabGroup:SetLayout("Flow")
 	tabGroup:SetCallback("OnGroupSelected", function (c, e, g) GUI:DrawScrollFrame(c, e, g) end)
 	tabGroup:SetStatusTable({})
 	mainFrame:AddChild(tabGroup)
-
-	tabGroup:SelectTab("group")
+	tabGroup:SelectTab(1)
 end
 
-function GUI:DrawScrollFrame(container, event, group)
+function GUI:DrawScrollFrame(container, event, i)
 	container:ReleaseChildren()
-	if group == "group" then
-		mainFrame:SetWidth(600)
-		GUI:CreateGroupTimesTable(container)
-	elseif group == "friends" then
-		mainFrame:SetWidth(600)
-		--for name, player in pairs(self.playerTable) do
-		--	GUI:DrawPlayerLabels(name, player, group, scroll)
-		--end
-	elseif group == "Warsong Gulch" or group == "Alterac Valley" or group == "Arathi Basin" then
-		GUI:CreateHistoryTable(group, container)
-		mainFrame:SetWidth(600)
-	end
+	local tabData = self.tabsData[i]
+	mainFrame:SetWidth(tabData.frameWidth)
+	tabData.create(self, tabData.value, container)
+end
+
+function GUI:CreateEventLogTable(map, container)
+
+end
+
+function GUI:CreateFriendsTable(value, container)
+	--for name, player in pairs(self.playerTable) do
+	--	GUI:DrawPlayerLabels(name, player, group, scroll)
+	--end
 end
 
 function GUI:CreateHistoryTable(map, container)
@@ -122,7 +132,7 @@ function GUI:CreateHistoryRows(map)
 	return { { groupHeading = '', rowData = rowData } }
 end
 
-function GUI:CreateGroupTimesTable(container)
+function GUI:CreateGroupTimesTable(value, container)
 	local fieldMetaData = { 
 		{ fieldName = "Name", columnWidth = 80 },
 		{ fieldName = "Warsong Gulch", columnWidth = 120 },
