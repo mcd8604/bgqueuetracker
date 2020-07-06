@@ -18,7 +18,9 @@ function BGQueueTracker:OnInitialize()
 			curBGData = {},
 			prevBGData = {},
 			groupData = {},
-			isGroupQueued = false
+			isGroupQueued = false,
+			eventLog = {},
+			maxStoredEvents = 100,
 		}
 	}, true)
 	--self.states = {
@@ -73,7 +75,7 @@ end
 function BGQueueTracker:PLAYER_ENTERING_WORLD(event, isInitialLogin, isReloadingUi)
 	if isInitialLogin then
 		--BGQueueTracker:Print(format("%s: %s %s", event, tostring(isInitialLogin), tostring(isReloadingUi)))
-
+		self:pushEventEntry({ time = GetServerTime(), event = event })
 	end
 end
 
@@ -137,6 +139,7 @@ function BGQueueTracker:UPDATE_BATTLEFIELD_STATUS(event, battleFieldIndex)
 end
 
 function BGQueueTracker:PLAYER_ENTERING_BATTLEGROUND(event)
+	self:pushEventEntry({ time = GetServerTime(), event = event })
 	--BGQueueTracker:Print("PLAYER_ENTERING_BATTLEGROUND")
 	--self.states.isConfirming = false
 	--self.states.isActive = true
@@ -209,6 +212,7 @@ function BGQueueTracker:UpdatePlayerBGTimes()
 				--self.states.isActive = false
 				mapCurTimeData.confirmStartTime = t
 				mapCurTimeData.waitSeconds = t - mapCurTimeData.startTime
+				self:pushEventEntry({ time = GetServerTime(), event = 'QUEUE_POP_CONFIRM', note = format('map: %s', bgData.map) })
 				--BGQueueTracker:Print("confirm queue")
 			elseif(bgData.status == "active") then
 				--self.states.isConfirming = false
@@ -245,8 +249,9 @@ function BGQueueTracker:startQueue(bgData)
 	-- track the durations that a queue is paused
 	-- track the duration for an active BG
 	local s = bgData.waitTime/1000
+	local t = GetServerTime()
 	local newTimesData = {
-		startTime = GetServerTime() - s,
+		startTime = t - s,
 		waitSeconds = s,
 		confirmStartTime = 0,
 		initialEst = bgData.estTime,
@@ -257,6 +262,7 @@ function BGQueueTracker:startQueue(bgData)
 		activeDuration = 0,
 		endingTimestamp = 0
 	}
+	self:pushEventEntry({ time = t, event = 'QUEUE_START', note = format('map: %s', bgData.map) })
 	return newTimesData
 end
 
@@ -276,6 +282,7 @@ function BGQueueTracker:resetQueue(map)
 			queueTimesData.waitSeconds = 0
 			queueTimesData.queuePauses = {}
 			self.db.factionrealm.queueHistory[map][1] = queueTimesData
+			self:pushEventEntry({ time = t, event = 'QUEUE_RESET', note = format('map: %s', map) })
 		end
 	end
 end
@@ -288,6 +295,7 @@ function BGQueueTracker:checkPause(bgData)
 		-- new pause starts if prev data has est time > 0 and current data has est == 0
 		if (not curPause or curPause.ended) and (prev.estTime and prev.estTime > 0) and (not bgData.estTime or bgData.estTime == 0) then
 			table.insert(timeData.queuePauses, 1, { start = bgData.waitTime, stop = bgData.waitTime, ended = false })
+			self:pushEventEntry({ time = GetServerTime(), event = 'QUEUE_PAUSE_START', note = format('map: %s', bgData.map) })
 			--BGQueueTracker:Print(format('new pause: start=%i', bgData.waitTime))		
 		elseif curPause and (not prev.estTime or prev.estTime == 0) then			
 			-- pause continues if prev data has est time == 0 and current data has est == 0	
@@ -295,6 +303,7 @@ function BGQueueTracker:checkPause(bgData)
 			-- pause ends if prev data has est time == 0 and current data has est > 0
 			if (bgData.estTime and bgData.estTime > 0) then
 				timeData.queuePauses[1].ended = true
+				self:pushEventEntry({ time = GetServerTime(), event = 'QUEUE_PAUSE_END', note = format('map: %s', bgData.map) })
 				--BGQueueTracker:Print(format('pause end: stop=%i', bgData.waitTime))
 			end
 		end
@@ -452,4 +461,11 @@ function DrawMinimapIcon()
 			end
 		end
 	}), BGQueueTracker.db.factionrealm.minimapButton);
+end
+
+function BGQueueTracker:pushEventEntry(entry)
+	table.insert(self.db.factionrealm.eventLog, 1, entry)
+	while #self.db.factionrealm.eventLog > self.db.factionrealm.maxStoredEvents do
+		table.remove(self.db.factionrealm.eventLog)
+	end
 end

@@ -98,7 +98,24 @@ function GUI:DrawScrollFrame(container, event, i)
 end
 
 function GUI:CreateEventLogTable(map, container)
+	local fieldMetaData = {
+		{ fieldName = "Time", columnWidth = 120 },
+		{ fieldName = "Event", columnWidth = 160 },
+		{ fieldName = "Note", columnWidth = 220 },
+	}
+	DisplayTable:new(container, fieldMetaData, GUI:CreateEventLogRows())
+end
 
+function GUI:CreateEventLogRows()
+	local rowData = {}
+	for i, entry in ipairs(BGQueueTracker.db.factionrealm.eventLog) do
+		table.insert(rowData, {
+			{ displayText = date("%x %X", entry.time or 0)},
+			{ displayText = entry.event },
+			{ displayText = entry.note }
+		})
+	end
+	return { { groupHeading = '', rowData = rowData } }
 end
 
 function GUI:CreateFriendsTable(value, container)
