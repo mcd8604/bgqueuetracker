@@ -7,8 +7,6 @@ LibStub("AceHook-3.0"):Embed(GUI)
 
 local mainFrame = nil
 local tabGroup = nil
---local tree = {}
---local treeView = nil
 --local BGQueueTrackerGUI_UpdateInterval = 1.0;
 
 function GUI:Show(skipUpdate, sort_column)
@@ -228,23 +226,6 @@ function GUI.appendQueueDataToTooltip(tooltip, queueData)
 	end
 end
 
---function GUI:DrawPlayerLabel(name, player, currentTab, parentContainer)
---	local valid = false
---	if currentTab == "group" and (name == UnitName("player") or UnitInParty(name) or UnitInRaid(name)) then
---		valid = true
---	elseif currentTab == "friends" then
---		friendInfo = C_FriendList.GetFriendInfo(name) 
---		if(friendInfo and friendInfo.name) then 
---			valid = true
---		end
---	end
---	if(valid) then
---		player.display = GUI:CreatePlayerDisplay(player)
---		updatePlayerDisplay(player)
---		parentContainer:AddChild(player.display)
---	end
---end
-
 function GUI:SetPlayerData(playerName, bgData, groupData, bgTimes)
 	player = self.playerTable[playerName]
 	if player then
@@ -291,79 +272,6 @@ function GUI:RemoveIntersectingGroups(groupData)
 			table.remove(self.groupList, i)
 		end
 	end
-end
-
---function GUI:PopulateTree()
---	if(treeView) then
---		tree = {}
---		--for i, group in ipairs(self.groupList) do
---		--	local groupNode = { children = {} }
---		--	updatePlayerTime(player)
---		--	for name, playerGroupData in pairs(group) do
---		--		print(name)
---		--		local playerNode = { 
---		--			value = name,
---		--			text = name,
---		--			children = {}
---		--		}
---		--		local player = self.playerTable[name]
---		--		if(player) then
---		--			for bgid, bgData in pairs(player.bgs) do
---		--				local bgNode = {
---		--					value = bgid,
---		--					text = getBGText(player.elapsed, bgData)
---		--				}
---		--				table.insert(playerNode.children, bgNode)
---		--			end
---		--			table.insert(groupNode.children, playerNode)
---		--		end
---		--	end
---		--	table.insert(tree, groupNode)
---		--end
---		--local groupNode = { children = {} }
---		for name, player in pairs(self.playerTable) do
---			local playerNode = createPlayerNode(player)
---			table.insert(tree, playerNode)
---		end
---		--table.insert(tree, groupNode)
---	end
---end
-
---function createPlayerNode(player)
---	local playerNode = {}
---	if(player) then
---		playerNode = { 
---			value = player.name,
---			text = player.name,
---			children = {}
---		}
---		for bgid, bgData in pairs(player.bgs) do
---			local bgNode = {
---				value = bgid,
---				text = getBGText(player.elapsed, bgData)
---			}
---			table.insert(playerNode.children, bgNode)
---		end
---	end
---	return playerNode
---end
-
-function GUI:CreatePlayerDisplay(player)
-	local group = AceGUI:Create("SimpleGroup")
-	group:SetFullWidth(true)
-	group:SetLayout("Flow")
-	playerLabel = AceGUI:Create("Label")
-	playerLabel:SetRelativeWidth(1)
-	playerLabel:SetText(player.name)
-	group:AddChild(playerLabel)
-	for map, bgData in pairs(player.bgs) do
-		if(bgData ~= nil) then
-			bgLabel = GUI:CreateBGLabel(map)
-			player.bgLabels[map] = bgLabel 
-			group:AddChild(bgLabel)
-		end
-	end
-	return group
 end
 
 function GUI:CreateBGLabel(map)
