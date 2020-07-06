@@ -5,22 +5,20 @@ local AceGUI = LibStub("AceGUI-3.0")
 
 LibStub("AceHook-3.0"):Embed(GUI)
 
-local mainFrame = nil
-local tabGroup = nil
 --local BGQueueTrackerGUI_UpdateInterval = 1.0;
 
 function GUI:Show(skipUpdate, sort_column)
-	mainFrame:Show()
+	self.mainFrame:Show()
 end
 
 function GUI:Hide()
-	if (mainFrame) then
-		mainFrame:Hide()
+	if (self.mainFrame) then
+		self.mainFrame:Hide()
 	end
 end
 
 function GUI:Toggle()
-	if (mainFrame and mainFrame:IsShown()) then
+	if (self.mainFrame and self.mainFrame:IsShown()) then
 		GUI:Hide()
 	else
 		GUI:Show()
@@ -34,16 +32,16 @@ end
 function GUI:PrepareGUI()
 	self.groupList = {}
 	self.playerTable = {}
-	mainFrame = AceGUI:Create("Window")
-	mainFrame:Hide()
-	_G["BGQueueTrackerGUI_MainFrame"] = mainFrame
+	self.mainFrame = AceGUI:Create("Window")
+	self.mainFrame:Hide()
+	_G["BGQueueTrackerGUI_MainFrame"] = self.mainFrame
 	tinsert(UISpecialFrames, "BGQueueTrackerGUI_MainFrame")	-- allow ESC close
-	mainFrame:SetTitle("BG Queue Tracker")
-	mainFrame:SetWidth(600)
-	mainFrame:SetLayout("Fill")
-	mainFrame:EnableResize(true)
-	--mainFrame.TimeSinceLastUpdate = 0
-	--mainFrame:SetCallback("OnUpdate", function(self, elapsed)
+	self.mainFrame:SetTitle("BG Queue Tracker")
+	self.mainFrame:SetWidth(600)
+	self.mainFrame:SetLayout("Fill")
+	self.mainFrame:EnableResize(true)
+	--self.mainFrame.TimeSinceLastUpdate = 0
+	--self.mainFrame:SetCallback("OnUpdate", function(self, elapsed)
 	--	print('OnUpdate')
 	--	self.TimeSinceLastUpdate = self.TimeSinceLastUpdate + elapsed; 	  
 	--	while (self.TimeSinceLastUpdate > BGQueueTrackerGUI_UpdateInterval) do
@@ -56,7 +54,7 @@ function GUI:PrepareGUI()
 	--	  self.TimeSinceLastUpdate = self.TimeSinceLastUpdate - BGQueueTrackerGUI_UpdateInterval;
 	--	end
 	--end)
-	--mainFrame:SetCallback("OnClose", function(widget) AceGUI:Release(widget) end)
+	--self.mainFrame:SetCallback("OnClose", function(widget) AceGUI:Release(widget) end)
 
 	--local button = AceGUI:Create("Button")
 	--button:SetText("Clear")
@@ -65,7 +63,7 @@ function GUI:PrepareGUI()
 	--	self.playerTable = {}
 	--	scroll:ReleaseChildren()
 	--end)
-	--mainFrame:AddChild(button)
+	--self.mainFrame:AddChild(button)
 
 	self.tabsData = {
 		{ value = "group",			displayText = "Queues",		create = self.CreateGroupTimesTable,frameWidth = 600 },
@@ -79,23 +77,23 @@ function GUI:PrepareGUI()
 end
 
 function GUI:CreateTabGroup()
-	tabGroup = AceGUI:Create("TabGroup")
+	self.tabGroup = AceGUI:Create("TabGroup")
 	local tabs = {}
 	for i, tabData in ipairs(self.tabsData) do
 		table.insert(tabs, { text = tabData.displayText, value = i })
 	end
-	tabGroup:SetTabs(tabs)
-	tabGroup:SetLayout("Flow")
-	tabGroup:SetCallback("OnGroupSelected", function (c, e, g) GUI:DrawScrollFrame(c, e, g) end)
-	tabGroup:SetStatusTable({})
-	mainFrame:AddChild(tabGroup)
-	tabGroup:SelectTab(1)
+	self.tabGroup:SetTabs(tabs)
+	self.tabGroup:SetLayout("Flow")
+	self.tabGroup:SetCallback("OnGroupSelected", function (c, e, g) GUI:DrawScrollFrame(c, e, g) end)
+	self.tabGroup:SetStatusTable({})
+	self.mainFrame:AddChild(self.tabGroup)
+	self.tabGroup:SelectTab(1)
 end
 
 function GUI:DrawScrollFrame(container, event, i)
 	container:ReleaseChildren()
 	local tabData = self.tabsData[i]
-	mainFrame:SetWidth(tabData.frameWidth)
+	self.mainFrame:SetWidth(tabData.frameWidth)
 	tabData.create(self, tabData.value, container)
 end
 
@@ -260,7 +258,7 @@ function GUI:SetPlayerData(playerName, bgData, groupData, bgTimes)
 	--GUI:PopulateTree()
 
 	-- Cause re-draw
-	tabGroup:SelectTab(tabGroup.status.selected)
+	self.tabGroup:SelectTab(self.tabGroup.status.selected)
 end
 
 function GUI:AddGroup(groupData)
@@ -321,7 +319,7 @@ function updatePlayerDisplay(player)
 		-- Do a quick recheck incase the text got bigger in the update without something being removed/added
 		--if( longestText < (self.text:GetStringWidth() + 10) ) then
 		--	longestText = self.text:GetStringWidth() + 20
-		--	mainFrame:SetWidth(longestText)
+		--	self.mainFrame:SetWidth(longestText)
 		--end
 	end
 end
