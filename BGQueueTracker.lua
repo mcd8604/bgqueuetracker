@@ -447,7 +447,7 @@ function DrawMinimapIcon()
 				timeData = BGQueueTracker.db.factionrealm.queueHistory[map][1]
 				if timeData then
 					tooltip:AddLine(' ')
-					BGQueueTrackerGUI:appendQueueDataToTooltip(tooltip, map, data, timeData)
+					BGQueueTrackerGUI.appendQueueDataToTooltip(tooltip, { map = map, data = data, timeData = timeData } )
 				end
 			end
 		end

@@ -6,8 +6,6 @@ local AceGUI = LibStub("AceGUI-3.0")
 LibStub("AceHook-3.0"):Embed(GUI)
 
 local mainFrame = nil
-local playerTable = {}
-local groupList = {}
 local tabGroup = nil
 --local tree = {}
 --local treeView = nil
@@ -36,6 +34,8 @@ function GUI:Reset()
 end
 
 function GUI:PrepareGUI()
+	self.groupList = {}
+	self.playerTable = {}
 	mainFrame = AceGUI:Create("Window")
 	mainFrame:Hide()
 	_G["BGQueueTrackerGUI_MainFrame"] = mainFrame
@@ -50,7 +50,7 @@ function GUI:PrepareGUI()
 	--	self.TimeSinceLastUpdate = self.TimeSinceLastUpdate + elapsed; 	  
 	--	while (self.TimeSinceLastUpdate > BGQueueTrackerGUI_UpdateInterval) do
 	--		local time = GetTime()
-	--		for name, player in pairs(playerTable) do
+	--		for name, player in pairs(self.playerTable) do
 	--			for bgid, label in pairs(player.bgLabels) do
 	--				updateLabel(time, bgid, label)
 	--			end
@@ -64,7 +64,7 @@ function GUI:PrepareGUI()
 	--button:SetText("Clear")
 	--button:SetFullWidth(true)
 	--button:SetCallback("OnClick", function(self, elapsed)
-	--	playerTable = {}
+	--	self.playerTable = {}
 	--	scroll:ReleaseChildren()
 	--end)
 	--mainFrame:AddChild(button)
@@ -87,122 +87,90 @@ end
 
 function GUI:DrawScrollFrame(container, event, group)
 	container:ReleaseChildren()
-	scroll = AceGUI:Create("ScrollFrame")
-	scroll:SetLayout("Flow")
-	scroll:SetFullWidth(true)
-	scroll:SetFullHeight(true)
 	if group == "group" then
 		mainFrame:SetWidth(600)
-		--treeView = AceGUI:Create("TreeGroup")
-		--treeView:SetTree(tree)
-		--container:AddChild(treeView)
-		local tableHeader = GUI:CreateTableHeader()
-		container:AddChild(tableHeader)
-		container:AddChild(scroll)
-		GUI:DrawGroups(scroll)
+		GUI:CreateGroupTimesTable(container)
 	elseif group == "friends" then
 		mainFrame:SetWidth(600)
-		--for name, player in pairs(playerTable) do
+		--for name, player in pairs(self.playerTable) do
 		--	GUI:DrawPlayerLabels(name, player, group, scroll)
 		--end
 	elseif group == "Warsong Gulch" or group == "Alterac Valley" or group == "Arathi Basin" then
-		GUI:DrawHistory(group, container, scroll)
+		GUI:CreateHistoryTable(group, container)
 		mainFrame:SetWidth(600)
 	end
 end
 
-function GUI:CreateTableHeader()
-	local tableHeader = AceGUI:Create("SimpleGroup")
-	tableHeader:SetFullWidth(true)
-	tableHeader:SetLayout("Flow")
-
-	local btn = AceGUI:Create("Label")
-	btn:SetWidth(80)
-	btn:SetText("Name")
-	tableHeader:AddChild(btn)
-
-	btn = AceGUI:Create("Label")
-	btn:SetWidth(120)
-	btn:SetText("Warsong Gulch")
-	tableHeader:AddChild(btn)
-
-	btn = AceGUI:Create("Label")
-	btn:SetWidth(120)
-	btn:SetText("Alterac Valley")
-	tableHeader:AddChild(btn)
-
-	btn = AceGUI:Create("Label")
-	btn:SetWidth(120)
-	btn:SetText("Arathi Basin")
-	tableHeader:AddChild(btn)
-	
-	return tableHeader
+function GUI:CreateHistoryTable(map, container)
+	local fieldMetaData = {
+		{ fieldName = "Queue Start", columnWidth = 120 },
+		{ fieldName = "Initial Estimate", columnWidth = 90 },
+		{ fieldName = "Final Estimate", columnWidth = 90 },
+		{ fieldName = "Wait Time", columnWidth = 90 }
+	}
+	DisplayTable:new(container, fieldMetaData, GUI:CreateHistoryRows(map))
 end
 
-function GUI:DrawGroups(container)
-	for i, group in ipairs(groupList) do
-		local groupWidget = AceGUI:Create("SimpleGroup")
-		groupWidget:SetFullWidth(true)
-		local groupHeader = AceGUI:Create("Heading")
-		groupHeader:SetText("Group")
-		groupHeader:SetFullWidth(true)
-		groupWidget:AddChild(groupHeader)
-		updatePlayerTime(player)
+function GUI:CreateHistoryRows(map)
+	local rowData = {}
+	for i, queue in ipairs(BGQueueTracker.db.factionrealm.queueHistory[map]) do
+		table.insert(rowData, {
+			{ displayText = date("%x %X", queue.startTime or 0) },
+			{ displayText = formatShortTime(queue.initialEst or 0) },
+			{ displayText = formatShortTime(queue.finalEst or 0) },
+			{ displayText = formatShortTime(queue.waitSeconds * 1000) }
+		})
+	end
+	return { { groupHeading = '', rowData = rowData } }
+end
+
+function GUI:CreateGroupTimesTable(container)
+	local fieldMetaData = { 
+		{ fieldName = "Name", columnWidth = 80 },
+		{ fieldName = "Warsong Gulch", columnWidth = 120 },
+		{ fieldName = "Alterac Valley", columnWidth = 120 },
+		{ fieldName = "Arathi Basin", columnWidth = 120 } 
+	}
+	DisplayTable:new(container, fieldMetaData, GUI:CreateGroupTimesGroups())
+end
+
+function GUI:CreateGroupTimesGroups()
+	local rowDataArray = {}
+	for i, group in ipairs(self.groupList) do
+		local rows = {}
 		for name, playerGroupData in pairs(group) do
-			local player = playerTable[name]
-			local row = nil
-			if(player) then
-				row = GUI:CreatePlayerRow(name, player)
-			else 
-				row = GUI:CreatePlayerRow(name, nil)
-			end
-			groupWidget:AddChild(row)
+			local player = self.playerTable[name]
+			updatePlayerTime(player)
+			table.insert(rows, GUI:CreatePlayerRow(name, player))
 		end
-		container:AddChild(groupWidget)
+		table.insert(rowDataArray, { groupHeading = 'Group', rowData = rows })
 	end	
+	return rowDataArray
 end
 
 function GUI:CreatePlayerRow(name, player)
-	local row = AceGUI:Create("SimpleGroup")
-	row:SetFullWidth(true)
-	row:SetLayout("Flow")
-
-	local btn = AceGUI:Create("InteractiveLabel")
-	btn:SetWidth(80)
-	btn:SetText(name)
-	row:AddChild(btn)
-	
+	local row = { { displayText = name } }
 	if(player) then
 		for i, map in ipairs(BGQueueTracker.MapNames) do
 			bg = player.bgs[map]
-			btn = AceGUI:Create("InteractiveLabel")
-			btn:SetWidth(120)
+			field = { displayText = "" }
 			if(bg) then 
-				btn:SetText(getBGText(player.elapsed, bg, false))
-				GUI:setTimeTooltip(btn, map, bg, player.timeData[map])
-			else
-				btn:SetText("")
+				field = { 
+					displayText = getBGText(player.elapsed, bg, false),
+					toolTipFunction = GUI.appendQueueDataToTooltip,
+					toolTipData = { map = map, data = bg, timeData = player.timeData[map] }
+				}
 			end
-			btn.highlight:SetColorTexture(0.3, 0.3, 0.3, 0.5)
-			row:AddChild(btn)
+			table.insert(row, field)
 		end
-	end
-	
+	end	
 	return row
 end
 
-function GUI:setTimeTooltip(widget, map, bgData, timeData)
-	if(bgData) then
-		widget:SetCallback("OnEnter", function (widget, event) 
-			GameTooltip:SetOwner(mainFrame.frame, "ANCHOR_CURSOR");
-			GUI:appendQueueDataToTooltip(GameTooltip, map, bgData, timeData)
-			GameTooltip:Show()
-		end)
-		widget:SetCallback("OnLeave", function (widget, event) GameTooltip:Hide() end)
-	end
-end
-
-function GUI:appendQueueDataToTooltip(tooltip, map, bgData, timeData)
+function GUI.appendQueueDataToTooltip(tooltip, queueData)
+	local map = queueData.map
+	local bgData = queueData.bgData
+	local timeData = queueData.timeData
 	local soloGroup = ''
 	local paused = ''
 	if bgData then
@@ -278,7 +246,7 @@ end
 --end
 
 function GUI:SetPlayerData(playerName, bgData, groupData, bgTimes)
-	player = playerTable[playerName]
+	player = self.playerTable[playerName]
 	if player then
 		--table.insert(player.bgs, bgData.bgid, bgData)
 		player.bgs = bgData
@@ -295,7 +263,7 @@ function GUI:SetPlayerData(playerName, bgData, groupData, bgTimes)
 			lastUpdate = GetTime(),
 			elapsed = 0
 		}
-		playerTable[playerName] = player
+		self.playerTable[playerName] = player
 	end
 	GUI:AddGroup(groupData)
 	--GUI:PopulateTree()
@@ -307,12 +275,12 @@ end
 function GUI:AddGroup(groupData)
 	if (groupData and next(groupData) ~= nil) then
 		intersections = GUI:RemoveIntersectingGroups(groupData)
-		table.insert(groupList, groupData)
+		table.insert(self.groupList, groupData)
 	end
 end
 
 function GUI:RemoveIntersectingGroups(groupData)
-	for i, group in ipairs(groupList) do
+	for i, group in ipairs(self.groupList) do
 		local c = 0
 		for playerName, playerData in pairs(groupData) do
 			if(group[playerName] ~= nil) then
@@ -320,7 +288,7 @@ function GUI:RemoveIntersectingGroups(groupData)
 			end
 		end
 		if(c > 0) then
-			table.remove(groupList, i)
+			table.remove(self.groupList, i)
 		end
 	end
 end
@@ -328,7 +296,7 @@ end
 --function GUI:PopulateTree()
 --	if(treeView) then
 --		tree = {}
---		--for i, group in ipairs(groupList) do
+--		--for i, group in ipairs(self.groupList) do
 --		--	local groupNode = { children = {} }
 --		--	updatePlayerTime(player)
 --		--	for name, playerGroupData in pairs(group) do
@@ -338,7 +306,7 @@ end
 --		--			text = name,
 --		--			children = {}
 --		--		}
---		--		local player = playerTable[name]
+--		--		local player = self.playerTable[name]
 --		--		if(player) then
 --		--			for bgid, bgData in pairs(player.bgs) do
 --		--				local bgNode = {
@@ -353,7 +321,7 @@ end
 --		--	table.insert(tree, groupNode)
 --		--end
 --		--local groupNode = { children = {} }
---		for name, player in pairs(playerTable) do
+--		for name, player in pairs(self.playerTable) do
 --			local playerNode = createPlayerNode(player)
 --			table.insert(tree, playerNode)
 --		end
@@ -441,9 +409,11 @@ function updatePlayerDisplay(player)
 end
 
 function updatePlayerTime(player)
-	local time = GetTime()
-	player.elapsed = player.elapsed + (time - player.lastUpdate)	
-	player.lastUpdate = time
+	if player then
+		local time = GetTime()
+		player.elapsed = player.elapsed + (time - player.lastUpdate)	
+		player.lastUpdate = time
+	end
 end
 
 function getBGText(elapsed, bgData, prependMap)
@@ -469,69 +439,4 @@ function getBGText(elapsed, bgData, prependMap)
 		end
 	end
 	return text
-end
-
-function GUI:DrawHistory(map, container, scroll)
-	local tableHeader = GUI:CreateHistoryTableHeader()
-	container:AddChild(tableHeader)
-	container:AddChild(scroll)	
-	for i, queue in ipairs(BGQueueTracker.db.factionrealm.queueHistory[map]) do
-		scroll:AddChild(GUI:CreateHistoryRow(queue))
-	end	
-end
-
-function GUI:CreateHistoryTableHeader()
-	local tableHeader = AceGUI:Create("SimpleGroup")
-	tableHeader:SetFullWidth(true)
-	tableHeader:SetLayout("Flow")
-
-	local btn = AceGUI:Create("Label")
-	btn:SetWidth(120)
-	btn:SetText("Queue Start")
-	tableHeader:AddChild(btn)
-
-	btn = AceGUI:Create("Label")
-	btn:SetWidth(90)
-	btn:SetText("Initial Estimate")
-	tableHeader:AddChild(btn)
-
-	btn = AceGUI:Create("Label")
-	btn:SetWidth(90)
-	btn:SetText("Final Estimate")
-	tableHeader:AddChild(btn)
-
-	btn = AceGUI:Create("Label")
-	btn:SetWidth(90)
-	btn:SetText("Wait Time")
-	tableHeader:AddChild(btn)
-	
-	return tableHeader
-end
-
-function GUI:CreateHistoryRow(queue)
-	local row = AceGUI:Create("SimpleGroup")
-	row:SetFullWidth(true)
-	row:SetLayout("Flow")
-
-	local btn = AceGUI:Create("InteractiveLabel")
-	btn:SetWidth(120)
-	btn:SetText(date("%x %X", queue.startTime or 0))
-	row:AddChild(btn)
-
-	btn = AceGUI:Create("InteractiveLabel")
-	btn:SetWidth(90)
-	btn:SetText(formatShortTime(queue.initialEst or 0))
-	row:AddChild(btn)
-
-	btn = AceGUI:Create("InteractiveLabel")
-	btn:SetWidth(90)
-	btn:SetText(formatShortTime(queue.finalEst or 0))
-	row:AddChild(btn)
-
-	btn = AceGUI:Create("InteractiveLabel")
-	btn:SetWidth(90)
-	btn:SetText(formatShortTime(queue.waitSeconds * 1000))
-	row:AddChild(btn)
-	
-	return row
 end

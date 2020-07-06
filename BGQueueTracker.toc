@@ -16,3 +16,4 @@ Libs\embeds.xml
 
 BGQueueTracker.lua
 GUI.lua
+DisplayTable.lua
