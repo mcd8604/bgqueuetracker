@@ -85,11 +85,11 @@ function BGQueueTracker:PLAYER_LEAVING_WORLD(event)
 end
 
 function BGQueueTracker:handlePlayersJoined(playersJoined)
-	--local outStr = "Player(s) Joined: "
-	--for i, playerName in ipairs(playersJoined) do
-	--	outStr = outStr .. playerName .. " "
-	--end
-	--BGQueueTracker:Print(outStr)
+	local note = "Player(s) Joined: "
+	for i, playerName in ipairs(playersJoined) do
+		note = note .. playerName .. " "
+	end
+	self:pushEventEntry({ time = GetServerTime(), event = "GROUP_ROSTER_UPDATE", note = note })
 	BGQueueTracker:resetGroupQueues()
 end
 
@@ -179,6 +179,7 @@ function BGQueueTracker:UpdatePlayerBGTimes()
 	for i, map in ipairs(self.MapNames) do
 		local mapCurTimeData = self.db.factionrealm.queueHistory[map][1]
 		local bgData = BGQueueTracker.db.factionrealm.curBGData[map]
+		local prev = self.db.factionrealm.prevBGData[bgData.map]
 		if bgData then
 			--BGQueueTracker:Print(format('%s status=%s (%i)', bgData.map or '', bgData.status or '', bgData.waitTime))
 			if(bgData.status == "queued") then
@@ -213,7 +214,9 @@ function BGQueueTracker:UpdatePlayerBGTimes()
 				--self.states.isActive = false
 				mapCurTimeData.confirmStartTime = t
 				mapCurTimeData.waitSeconds = t - mapCurTimeData.startTime
-				self:pushEventEntry({ time = GetServerTime(), event = 'QUEUE_POP_CONFIRM', note = format('map: %s', bgData.map) })
+				if prev.status == "queued" then
+					self:pushEventEntry({ time = GetServerTime(), event = 'BG_CONFIRM', note = format('map: %s', bgData.map) })
+				end
 				--BGQueueTracker:Print("confirm queue")
 			elseif(bgData.status == "active") then
 				--self.states.isConfirming = false
@@ -224,6 +227,9 @@ function BGQueueTracker:UpdatePlayerBGTimes()
 				--local runTime = GetBattlefieldInstanceRunTime() 
 				--BGQueueTracker:Print(format('bg active: activeDuration=%i', runTime))
 				--mapCurTimeData.activeDuration = runTime
+				if prev.status == "confirm" then
+					self:pushEventEntry({ time = GetServerTime(), event = 'BG_ACTIVE', note = format('map: %s', bgData.map) })
+				end
 			elseif(bgData.status == "none") then
 				BGQueueTracker:Print(format("Queue Status 'none': %s", map))
 			end
