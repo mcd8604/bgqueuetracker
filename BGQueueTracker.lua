@@ -81,6 +81,7 @@ end
 
 function BGQueueTracker:PLAYER_LEAVING_WORLD(event)
 	--BGQueueTracker:Print(event)
+	self:pushEventEntry({ time = GetServerTime(), event = event })
 end
 
 function BGQueueTracker:handlePlayersJoined(playersJoined)
