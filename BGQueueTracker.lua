@@ -218,7 +218,7 @@ function BGQueueTracker:UpdatePlayerBGTimes()
 				--self.states.isActive = false
 				mapCurTimeData.confirmStartTime = t
 				mapCurTimeData.waitSeconds = t - mapCurTimeData.startTime
-				if prev.status == "queued" then
+				if prev and prev.status == "queued" then
 					self:pushEventEntry({ time = GetServerTime(), event = 'BG_CONFIRM', note = format('map: %s', bgData.map) })
 				end
 				--BGQueueTracker:Print("confirm queue")
@@ -231,7 +231,7 @@ function BGQueueTracker:UpdatePlayerBGTimes()
 				--local runTime = GetBattlefieldInstanceRunTime() 
 				--BGQueueTracker:Print(format('bg active: activeDuration=%i', runTime))
 				--mapCurTimeData.activeDuration = runTime
-				if prev.status == "confirm" then
+				if prev and prev.status == "confirm" then
 					self:pushEventEntry({ time = GetServerTime(), event = 'BG_ACTIVE', note = format('map: %s', bgData.map) })
 				end
 			elseif(bgData.status == "none") then

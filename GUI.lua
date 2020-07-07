@@ -202,7 +202,9 @@ function GUI.appendQueueDataToTooltip(tooltip, queueData)
 		else
 			soloGroup = '(Solo)'
 		end
-		if not bgData.estTime or bgData.estTime == 0 then
+		if bgData.status == "active" then
+			paused = '|cFFFF0000In BG'
+		elseif not bgData.estTime or bgData.estTime == 0 then
 			paused = '|cFFFF0000*Paused*'
 		end
 	end
