@@ -181,7 +181,7 @@ function GUI:CreatePlayerRow(name, player)
 				field = { 
 					displayText = getBGText(player.elapsed, bg, false),
 					toolTipFunction = GUI.appendQueueDataToTooltip,
-					toolTipData = { map = map, data = bg, timeData = player.timeData[map] }
+					toolTipData = { map = map, bgData = bg, timeData = player.timeData[map] }
 				}
 			end
 			table.insert(row, field)
