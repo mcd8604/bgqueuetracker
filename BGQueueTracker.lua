@@ -76,7 +76,7 @@ function BGQueueTracker:PLAYER_ENTERING_WORLD(event, isInitialLogin, isReloading
 	local note = ""
 	if isInitialLogin then
 		note = "Login"
-		--BGQueueTracker:Print(format("%s: %s %s", event, tostring(isInitialLogin), tostring(isReloadingUi)))
+		self:UpdateBGData()
 	elseif isReloadingUi then
 		note = "Reloading UI"
 	end
@@ -118,29 +118,32 @@ function BGQueueTracker:UPDATE_BATTLEFIELD_STATUS(event, battleFieldIndex)
 		--BGQueueTracker:Print("UPDATE_BATTLEFIELD_STATUS")
 		--local instance, instanceType = IsInInstance();
 		--self.states.isActive = instance and instanceType == "pvp"
+	self:UpdateBGData()
+end
 
-		self.db.factionrealm.prevBGData = self.db.factionrealm.curBGData
-		self.db.factionrealm.curBGData = {}
-		--local asGroup = false
-		--GetMaxBattlefieldId()=3
-		for i=1,3 do
-			bgData = BGQueueTracker:GetBGStatus(i)
-			if bgData.map then
-				self.db.factionrealm.curBGData[bgData.map] = bgData
-			end
-			--asGroup = asGroup or bgData.asGroup
+function BGQueueTracker:UpdateBGData()
+	self.db.factionrealm.prevBGData = self.db.factionrealm.curBGData
+	self.db.factionrealm.curBGData = {}
+	--local asGroup = false
+	--GetMaxBattlefieldId()=3
+	for i=1,3 do
+		bgData = BGQueueTracker:GetBGStatus(i)
+		if bgData.map then
+			self.db.factionrealm.curBGData[bgData.map] = bgData
 		end
-		--isGroupQueued = asGroup
-		self.db.factionrealm.groupData = BGQueueTracker:GetGroupData()
-		curTimeData = BGQueueTracker:UpdatePlayerBGTimes()
-		BGQueueTrackerGUI:SetPlayerData(playerName, self.db.factionrealm.curBGData, self.db.factionrealm.groupData, curTimeData)
-		
-		--local serializedData = BGQueueTracker:Serialize(bgData, self.db.factionrealm.currentQueueTimes)
-		--BGQueueTracker:broadcastToGroup(serializedData)
-		--BGQueueTracker:broadcastToFriends(serializedData)
-		--nextBroadcastData = bgData
-		--C_FriendList.ShowFriends()
-	--end
+		--asGroup = asGroup or bgData.asGroup
+	end
+	--isGroupQueued = asGroup
+	self.db.factionrealm.groupData = BGQueueTracker:GetGroupData()
+	curTimeData = BGQueueTracker:UpdatePlayerBGTimes()
+	BGQueueTrackerGUI:SetPlayerData(playerName, self.db.factionrealm.curBGData, self.db.factionrealm.groupData, curTimeData)
+	
+	--local serializedData = BGQueueTracker:Serialize(bgData, self.db.factionrealm.currentQueueTimes)
+	--BGQueueTracker:broadcastToGroup(serializedData)
+	--BGQueueTracker:broadcastToFriends(serializedData)
+	--nextBroadcastData = bgData
+	--C_FriendList.ShowFriends()
+--end
 end
 
 function BGQueueTracker:PLAYER_ENTERING_BATTLEGROUND(event)
