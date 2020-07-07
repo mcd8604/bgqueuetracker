@@ -99,8 +99,8 @@ end
 
 function GUI:CreateEventLogTable(map, container)
 	local fieldMetaData = {
-		{ fieldName = "Time", columnWidth = 120 },
-		{ fieldName = "Event", columnWidth = 160 },
+		{ fieldName = "Time", columnWidth = 110 },
+		{ fieldName = "Event", columnWidth = 200 },
 		{ fieldName = "Note", columnWidth = 220 },
 	}
 	DisplayTable:new(container, fieldMetaData, GUI:CreateEventLogRows())
