@@ -73,10 +73,14 @@ function BGQueueTracker:GetPlayersJoined(oldGroupData, newGroupData)
 end
 
 function BGQueueTracker:PLAYER_ENTERING_WORLD(event, isInitialLogin, isReloadingUi)
+	local note = ""
 	if isInitialLogin then
+		note = "Login"
 		--BGQueueTracker:Print(format("%s: %s %s", event, tostring(isInitialLogin), tostring(isReloadingUi)))
-		self:pushEventEntry({ time = GetServerTime(), event = event })
+	elseif isReloadingUi then
+		note = "Reloading UI"
 	end
+	self:pushEventEntry({ time = GetServerTime(), event = event, note = note })
 end
 
 function BGQueueTracker:PLAYER_LEAVING_WORLD(event)
@@ -179,8 +183,8 @@ function BGQueueTracker:UpdatePlayerBGTimes()
 	for i, map in ipairs(self.MapNames) do
 		local mapCurTimeData = self.db.factionrealm.queueHistory[map][1]
 		local bgData = BGQueueTracker.db.factionrealm.curBGData[map]
-		local prev = self.db.factionrealm.prevBGData[bgData.map]
 		if bgData then
+			local prev = self.db.factionrealm.prevBGData[map]
 			--BGQueueTracker:Print(format('%s status=%s (%i)', bgData.map or '', bgData.status or '', bgData.waitTime))
 			if(bgData.status == "queued") then
 				-- check for new queue only if not in a BG
