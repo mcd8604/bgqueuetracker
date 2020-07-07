@@ -86,6 +86,7 @@ end
 function BGQueueTracker:PLAYER_LEAVING_WORLD(event)
 	--BGQueueTracker:Print(event)
 	self:pushEventEntry({ time = GetServerTime(), event = event })
+	self:PauseAllQueues()
 end
 
 function BGQueueTracker:handlePlayersJoined(playersJoined)
@@ -308,17 +309,13 @@ function BGQueueTracker:checkPause(bgData)
 		local curPause = timeData.queuePauses[1]
 		-- new pause starts if prev data has est time > 0 and current data has est == 0
 		if (not curPause or curPause.ended) and (prev.estTime and prev.estTime > 0) and (not bgData.estTime or bgData.estTime == 0) then
-			table.insert(timeData.queuePauses, 1, { start = bgData.waitTime, stop = bgData.waitTime, ended = false })
-			self:pushEventEntry({ time = GetServerTime(), event = 'QUEUE_PAUSE_START', note = format('map: %s', bgData.map) })
-			--BGQueueTracker:Print(format('new pause: start=%i', bgData.waitTime))		
+			self:StartNewPause(timeData, bgData)
 		elseif curPause and (not prev.estTime or prev.estTime == 0) then			
 			-- pause continues if prev data has est time == 0 and current data has est == 0	
 			timeData.queuePauses[1].stop = bgData.waitTime
 			-- pause ends if prev data has est time == 0 and current data has est > 0
 			if (bgData.estTime and bgData.estTime > 0) then
-				timeData.queuePauses[1].ended = true
-				self:pushEventEntry({ time = GetServerTime(), event = 'QUEUE_PAUSE_END', note = format('map: %s', bgData.map) })
-				--BGQueueTracker:Print(format('pause end: stop=%i', bgData.waitTime))
+				self:EndPause(timeData, bgData)
 			end
 		end
 		--if bgData.estTime == 0 and then
@@ -333,6 +330,29 @@ function BGQueueTracker:checkPause(bgData)
 		--		BGQueueTracker:Print(format('pause end: stop=%i', bgData.waitTime))
 		--	end
 		--end
+	end
+end
+
+function BGQueueTracker:StartNewPause(timeData, bgData)
+	table.insert(timeData.queuePauses, 1, { start = bgData.waitTime, stop = bgData.waitTime, ended = false })
+	self:pushEventEntry({ time = GetServerTime(), event = 'QUEUE_PAUSE_START', note = format('map: %s', bgData.map) })
+end
+
+function BGQueueTracker:EndPause(timeData, bgData)
+	timeData.queuePauses[1].ended = true
+	self:pushEventEntry({ time = GetServerTime(), event = 'QUEUE_PAUSE_END', note = format('map: %s', bgData.map) })
+end
+
+function BGQueueTracker:PauseAllQueues()
+	for map, bgData in pairs(self.db.factionrealm.curBGData) do
+		if bgData then
+			local timeData = self.db.factionrealm.queueHistory[map][1]
+			local curPause = timeData.queuePauses[1]
+			-- Only starts a new pause if the queue isn't already paused
+			if not curPause or curPause.ended then
+				self:StartNewPause(timeData, bgData)
+			end
+		end
 	end
 end
 
