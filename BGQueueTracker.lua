@@ -292,8 +292,9 @@ end
 function BGQueueTracker:resetQueue(map)
 	if map then
 		queueTimesData = self.db.factionrealm.queueHistory[map][1]
+		local t = GetServerTime()
 		if queueTimesData then
-			queueTimesData.startTime = GetServerTime()
+			queueTimesData.startTime = t
 			queueTimesData.waitSeconds = 0
 			queueTimesData.queuePauses = {}
 			self.db.factionrealm.queueHistory[map][1] = queueTimesData
