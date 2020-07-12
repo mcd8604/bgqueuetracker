@@ -32,7 +32,7 @@ end
 function GUI:PrepareGUI()
 	self.groupList = {}
 	self.playerTable = {}
-	self.mainFrame = AceGUI:Create("Window")
+	self.mainFrame = AceGUI:Create("Frame")
 	self.mainFrame:Hide()
 	_G["BGQueueTrackerGUI_MainFrame"] = self.mainFrame
 	tinsert(UISpecialFrames, "BGQueueTrackerGUI_MainFrame")	-- allow ESC close
