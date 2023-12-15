@@ -1,14 +1,32 @@
 ------------------------------------------------------------------------
-r1226 | nevcairiel | 2019-08-12 09:31:28 +0000 (Mon, 12 Aug 2019) | 1 line
+r1314 | funkehdude | 2023-11-16 01:01:18 +0000 (Thu, 16 Nov 2023) | 1 line
 Changed paths:
-   M /trunk/changelog.txt
+   M /trunk/Ace3_Vanilla.toc
 
-Update changelog
+bump toc
 ------------------------------------------------------------------------
-r1225 | nevcairiel | 2019-08-06 13:37:52 +0000 (Tue, 06 Aug 2019) | 1 line
+r1313 | funkehdude | 2023-11-08 01:36:37 +0000 (Wed, 08 Nov 2023) | 1 line
 Changed paths:
-   M /trunk/AceConfig-3.0/AceConfigDialog-3.0/AceConfigDialog-3.0.lua
+   M /trunk/Ace3.toc
 
-AceConfigDialog-3.0: Add an alternate backdrop for classic, since the DialogBorderDarkTemplate does not exist there
+bump toc
+------------------------------------------------------------------------
+r1312 | funkehdude | 2023-10-11 09:50:14 +0000 (Wed, 11 Oct 2023) | 1 line
+Changed paths:
+   M /trunk/Ace3_Wrath.toc
+
+bump toc
+------------------------------------------------------------------------
+r1311 | funkehdude | 2023-09-10 15:29:49 +0000 (Sun, 10 Sep 2023) | 1 line
+Changed paths:
+   M /trunk/Ace3.toc
+
+bump toc
+------------------------------------------------------------------------
+r1310 | funkehdude | 2023-08-18 12:21:18 +0000 (Fri, 18 Aug 2023) | 1 line
+Changed paths:
+   M /trunk/Ace3_Vanilla.toc
+
+bump toc
 ------------------------------------------------------------------------
 
